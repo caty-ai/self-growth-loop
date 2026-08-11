@@ -73,5 +73,11 @@ conditions are met:
 1. The collection-controls prerequisite (tracked on the operator's private tracker) is closed, providing the required collection controls.
 2. Sho has explicitly pre-approved the concrete trial plan.
 
+The collection pipeline behind condition 1 is public:
+[caty-ai/x-collector](https://github.com/caty-ai/x-collector). Trials that
+need collected production data go through that pipeline and inherit its
+collection controls instead of collecting on their own; the prerequisite is
+that this control work is finished, not merely that the pipeline exists.
+
 Approval is plan-specific. Record its reference and the spending/data boundaries
 in `permissions.md`; an approval for a prior trial does not carry forward.
