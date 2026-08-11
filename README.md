@@ -130,7 +130,7 @@ Not for you if: you want a fully-automatic self-improving agent with no human in
 ## Standalone or connected
 
 - **Standalone** — this repo + a directory for the ledger. Propose, lint, and review by hand. (That's what the Quickstart above does.)
-- **Connected** — plug into a wider setup, all optional: a feed collector supplying ideas (sense), the [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) engine running trials, launchd cron for the daily lint (`ops/`, install note in [INTEGRATION.md](INTEGRATION.md)), and a dead-man heartbeat if you have external monitoring.
+- **Connected** — plug into a wider setup, all optional: a feed collector supplying ideas (sense — e.g. [X Collector](https://github.com/caty-ai/x-collector)), the [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) engine running trials, launchd cron for the daily lint (`ops/`, install note in [INTEGRATION.md](INTEGRATION.md)), and a dead-man heartbeat if you have external monitoring.
 
 ---
 
@@ -158,6 +158,27 @@ Every ✅ row ships with tests — `tests/` holds 15 suites, including an engine
 | [docs/trial-isolation.md](docs/trial-isolation.md) | Isolation tiers per risk level |
 | [docs/council-wiring.md](docs/council-wiring.md) | Panel composition, verdict schema, quorum, retries |
 | [docs/adoption-wiring.md](docs/adoption-wiring.md) | Approval gate mechanics, rollout, rollback |
+
+<!-- family:generated:family-footer:start -->
+
+---
+
+Part of the **Caty AI family** — open tools for running a family of AI agents. The full map, including modules still being prepared for release, lives in [Family OS](https://github.com/caty-ai/family-os).
+
+| Axis | Module | What it does | State |
+| --- | --- | --- | --- |
+| Map | [Family OS](https://github.com/caty-ai/family-os) | The map of the whole family — every module, its state, and how they fit | published, MIT |
+| Rules | [Family Dev Handbook](https://github.com/caty-ai/family-dev-handbook) | The rules of the road — issues, PRs, worktrees, handoffs, parallel development | published, MIT |
+| Vertical · foundation | [Caty Agent Harness](https://github.com/caty-ai/caty-agent-harness) | Task backbone for AI agents — retries, checkpoints, and honest completion | published, MIT |
+| Vertical | [context-kit](https://github.com/caty-ai/context-kit) | Five-piece context hygiene kit for one agent — bounded output, delegation briefs, safety guards, recall | published, MIT |
+| Vertical | [Persona Engine](https://github.com/caty-ai/persona-engine) | Gives an agent a persona — layered personality and graded emotion | published, MIT |
+| Vertical | **Persona Growth Loop** | Grows the persona itself — minimal, idempotent proposals | publication in preparation |
+| Vertical | [X Collector](https://github.com/caty-ai/x-collector) | Turns X and the web into one daily digest — for people and agents | published, MIT |
+| Vertical | **Self Growth Loop** | Lets an agent grow its own abilities — proposals, governance, adoption records | published, MIT |
+| Horizontal · foundation | [Family Memory Architecture](https://github.com/caty-ai/family-memory-architecture) | The memory bus — how the family shares what it knows | published, MIT |
+| Horizontal | [Sitter](https://github.com/caty-ai/sitter) | Babysits delegated agent runs — watches, keeps evidence, restarts | published, MIT |
+
+<!-- family:generated:family-footer:end -->
 
 ---
 
