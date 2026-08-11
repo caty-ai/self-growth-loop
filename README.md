@@ -130,7 +130,7 @@ Not for you if: you want a fully-automatic self-improving agent with no human in
 ## Standalone or connected
 
 - **Standalone** — this repo + a directory for the ledger. Propose, lint, and review by hand. (That's what the Quickstart above does.)
-- **Connected** — plug into a wider setup, all optional: a feed collector supplying ideas (sense) — e.g. [X Collector](https://github.com/caty-ai/x-collector), the [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) engine running trials, launchd cron for the daily lint (`ops/`, install note in [INTEGRATION.md](INTEGRATION.md)), and a dead-man heartbeat if you have external monitoring.
+- **Connected** — plug into a wider setup, all optional: a feed collector supplying ideas (sense — e.g. [X Collector](https://github.com/caty-ai/x-collector)), the [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) engine running trials, launchd cron for the daily lint (`ops/`, install note in [INTEGRATION.md](INTEGRATION.md)), and a dead-man heartbeat if you have external monitoring.
 
 ---
 
@@ -179,6 +179,7 @@ Part of the **Caty AI family** — open tools for running a family of AI agents.
 | Horizontal | [Sitter](https://github.com/caty-ai/sitter) | Babysits delegated agent runs — watches, keeps evidence, restarts | published, MIT |
 
 <!-- family:generated:family-footer:end -->
+
 ---
 
 ## Contributing

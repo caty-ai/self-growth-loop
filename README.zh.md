@@ -179,6 +179,7 @@ bash tests/run.sh          # 15 个测试套件；其中的引擎集成测试会
 | 横轴 | [Sitter](https://github.com/caty-ai/sitter) | 替你盯着委派出去的智能体 — 监视、留证、重启 | 已公开・MIT |
 
 <!-- family:generated:family-footer:end -->
+
 ---
 
 ## 贡献指南

@@ -130,7 +130,7 @@ bash tests/run.sh          # 15 ชุดทดสอบ; engine integration tes
 ## แบบสแตนด์อโลนหรือแบบเชื่อมต่อ
 
 - **สแตนด์อโลน** — รีโปนี้บวกกับไดเรกทอรีสำหรับบัญชี เสนอ ตรวจสอบด้วย lint และรีวิวด้วยมือ (นี่คือสิ่งที่ Quickstart ด้านบนทำ)
-- **เชื่อมต่อ** — เชื่อมเข้ากับระบบที่กว้างขึ้น ทุกอย่างเป็นตัวเลือกเสริม: ตัวรวบรวมฟีดที่ป้อนไอเดีย (sense) — เช่น [X Collector](https://github.com/caty-ai/x-collector), engine [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) ที่รันการทดลอง, launchd cron สำหรับ lint ประจำวัน (`ops/`, วิธีติดตั้งอยู่ใน [INTEGRATION.md](INTEGRATION.md)) และสัญญาณ dead-man heartbeat หากคุณมีระบบมอนิเตอร์ภายนอก
+- **เชื่อมต่อ** — เชื่อมเข้ากับระบบที่กว้างขึ้น ทุกอย่างเป็นตัวเลือกเสริม: ตัวรวบรวมฟีดที่ป้อนไอเดีย (sense — เช่น [X Collector](https://github.com/caty-ai/x-collector)), engine [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) ที่รันการทดลอง, launchd cron สำหรับ lint ประจำวัน (`ops/`, วิธีติดตั้งอยู่ใน [INTEGRATION.md](INTEGRATION.md)) และสัญญาณ dead-man heartbeat หากคุณมีระบบมอนิเตอร์ภายนอก
 
 ---
 
@@ -179,6 +179,7 @@ bash tests/run.sh          # 15 ชุดทดสอบ; engine integration tes
 | แกนนอน | [Sitter](https://github.com/caty-ai/sitter) | พี่เลี้ยงของงานที่มอบหมายให้เอเจนต์ — เฝ้าดู เก็บหลักฐาน และรีสตาร์ต | เปิดแล้ว・MIT |
 
 <!-- family:generated:family-footer:end -->
+
 ---
 
 ## การมีส่วนร่วม

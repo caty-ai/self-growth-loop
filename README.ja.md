@@ -179,6 +179,7 @@ bash tests/run.sh          # 15 suites; the engine integration test drives the r
 | 横軸 | [Sitter](https://github.com/caty-ai/sitter) | 委譲したエージェント実行の見張り番 — 監視・証拠の記録・再起動 | 公開・MIT |
 
 <!-- family:generated:family-footer:end -->
+
 ---
 
 ## コントリビュート
