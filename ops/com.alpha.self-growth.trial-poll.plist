@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.alpha.self-growth.trial-poll</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>{{HOME}}/claude-workspace/self-growth-loop/scripts/run-trial-poll.sh</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>3600</integer>
+  <key>StandardOutPath</key>
+  <string>{{HOME}}/.claude/logs/self-growth/launchd.trial-poll.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>{{HOME}}/.claude/logs/self-growth/launchd.trial-poll.err.log</string>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

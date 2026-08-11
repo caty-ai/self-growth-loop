@@ -1,0 +1,7 @@
+.DS_Store
+.omc/
+_scratch/
+*.log
+node_modules/
+.omx/
+.readme-work/

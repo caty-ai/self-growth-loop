@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.alpha.self-growth.growth-lint</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>{{HOME}}/claude-workspace/self-growth-loop/scripts/run-growth-lint.sh</string>
+  </array>
+  <!-- Fires in the system timezone. Pick the hour for your deployment's daily rhythm and
+       re-check it if the host timezone changes. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>7</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>{{HOME}}/.claude/logs/self-growth/launchd.growth-lint.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>{{HOME}}/.claude/logs/self-growth/launchd.growth-lint.err.log</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

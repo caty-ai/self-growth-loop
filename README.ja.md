@@ -1,0 +1,180 @@
+# self-growth-loop
+
+<div align="center">
+
+[🇺🇸 English](README.md) ｜ **🇯🇵 日本語** ｜ [🇨🇳 简体中文](README.zh.md) ｜ [🇹🇭 ไทย](README.th.md)
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![runtime](https://img.shields.io/badge/runtime-bash%203.2%2B%20%2B%20ruby-lightgrey)
+![platform](https://img.shields.io/badge/platform-macOS-lightgrey)
+
+あなたのAIは、自分自身のセットアップに対する改善案を次々と提案してきます——新しいツール、より良いプロンプト、ワークフローの微調整。<br>
+それを手作業で取り込むのはスケールしませんし、かといってAIに勝手に変更させると、セットアップが気づかないうちに壊れていきます。<br>
+self-growth-loopは、すべての提案を「テスト」「リスクに応じたレビュー」「**あなたの明示的な承認**」を勝ち取らなければ何も変わらない、追跡可能な提案に変換するツールです。
+
+**監査できる成長。すべての変更は人間の関門を通過します。**
+
+🔧 [エンジニアリングガイド](INTEGRATION.md) ｜ 📘 [仕様書](docs/ledger-spec.md)
+
+</div>
+
+---
+
+## 思い当たりませんか？
+
+- AIアシスタントが「ツールXを導入すべきです」と提案してくる——でも、それを扱うプロセスがないため、そのアイデアはチャットログの中で消えていく
+- エージェントに自分の設定をいじらせてみたら、何が変わったのか把握するだけで一晩を費やしてしまった
+- 改善案は溜まっていく一方で、何を試したか、何がうまくいったか、何が却下されたかの記録が残らない
+- AIには時間をかけて良くなってほしいけれど、自分の知らないところで勝手に変わってほしくはない
+
+self-growth-loopは、まさにこのギャップを埋めるために存在するツールです。AI主導の改善に「記録」と「ブレーキ」を与えます。
+
+---
+
+## できること
+
+すべての改善案は**台帳の中の1ファイル**になり、5つの関門を通過していきます。人間の関門を飛ばすことはできません。
+
+```mermaid
+flowchart LR
+    S[sense<br/>collect ideas] --> P[propose<br/>one file per topic]
+    P --> T[trial<br/>isolated test run]
+    T --> C[council<br/>multi-model review]
+    C --> H{{human approval<br/>PENDING_SHO}}
+    H --> A[adopt<br/>backup + rollback plan on record]
+    style H fill:#f9e79f,stroke:#b7950b,stroke-width:3px
+```
+
+- 📒 **記録する** — すべての提案はプレーンテキストのファイルとして、誰が提案したか、何がテストされたか、誰が投票したか、誰が承認したかという完全な状態履歴を持ちます
+- 🧪 **まずテストする** — 提案はサンドボックス化されたエンジンのワークスペース内で、隔離された試行タスクとして実行されます。あなたの本番セットアップで直接実行されることは決してありません
+- 🗳️ **多角的に検証する** — 最もリスクの低いティアを除くすべての提案は、異なるAIモデルによる評議会が、あなたに届く前に試行結果の証拠を独立してレビューします
+- ✋ **あなたを待つ** — すべての採用は、人間がゴーサインを出すまで承認キューで止まります。自ら勝手に適用されることはありません
+- 🔙 **後戻りできる** — すべての採用には検証済みのバックアップ参照とロールバック計画が記録され、導入後は同梱のcronが毎日実行するlintが滞留したレコードや破損したレコードを検出します
+
+1つの提案が最初から最後までたどる道のりを見てみましょう。
+
+---
+
+## 60秒でわかるループ
+
+1つの提案がたどる道のりはこうです。フィードに入ってきたアイテム（「ツールXが良さそうだ」）が台帳のレコード（`PROPOSED`）になります。試行ランナーがそれをタスクとしてパッケージ化してエンジンに渡し、エンジンは隔離されたワークスペースの中でそれを実行します（`TRIALING`）。結果は証拠ファイルとして返ってきます。最もリスクの低いティアを除いては、異なるAIモデルによるパネルがそれぞれ証拠を読み、投票します（`COUNCIL`——最もリスクが低く可逆的なティアの場合は、投票の代わりに封印されたスキップ記録が残り、そのままあなたのキューに進みます）。投票が通れば、そのレコードはあなたの承認キューで待機します（`PENDING_SHO`）——キューレポートが、待機中のすべての判断をあなたに示します。あなたが承認して初めてレコードは `ADOPTED` に移り、その時点で検証済みの採用前バックアップ参照と数値化されたロールバック計画がすでにファイルに記録されています——そのうえで、対象のランタイムが変更を適用します。却下すれば、そのレコードには永久にその結果が記録されます——何か重要な変化がない限り、同じアイデアが再び戻ってくることはありません。自分の手で実際にやってみるために必要なものは、ごくわずかです。
+
+---
+
+## 必要なもの
+
+| | 要件 | 備考 |
+|---|---|---|
+| OS | macOS | ✅ テスト済み（標準の bash 3.2 + システムの ruby、gem不要） |
+| | Linux | ⚠️ 未テスト |
+| 単体利用 | 他に何も不要 | 台帳＋lint＋キューレポートはこのリポジトリだけで動作します |
+| 試行 | [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) のローカルチェックアウト | 試行タスクを実行するエンジン（固定バージョン: v0.2.0） |
+
+---
+
+## はじめよう
+
+### AIにセットアップを頼む
+
+これをコーディングエージェント（Claude Code、Codexなど）に貼り付けてください。
+
+> Clone https://github.com/caty-ai/self-growth-loop and run `bash tests/run.sh`. Then show me how to create a demo proposal with scripts/propose.sh against a temporary vault directory.
+
+### 自分の手でやる場合
+
+```sh
+git clone https://github.com/caty-ai/self-growth-loop.git
+cd self-growth-loop
+
+# create a demo proposal in a throwaway vault
+mkdir -p /tmp/sgl-demo-vault
+bash scripts/propose.sh --vault /tmp/sgl-demo-vault \
+  --topic-key demo-tool__acme --title "Trial the demo tool" \
+  --state PROPOSED --proposer mine \
+  --url https://example.com/item --report reports/demo.md
+
+# run the health check and read the queue report it writes
+bash scripts/growth-lint.sh --vault /tmp/sgl-demo-vault
+cat /tmp/sgl-demo-vault/25_review-pending/self-growth-queue.md
+```
+
+これで、ループの記帳処理を一通り実行できました。提案レコードが作成され、lintにかけられ、レポートされました。（レポートには `SENSE BROKEN` と表示されますが、これは想定どおりです——単体デモにはフィードコレクターが接続されていないためです。）`rm -rf /tmp/sgl-demo-vault` を実行すればすべて元に戻せます——リポジトリ自体には一切書き込みが行われていません。
+
+<details>
+<summary>テストスイート全体を実行する（エンジンが必要）</summary>
+
+```sh
+# ~/claude-workspace/caty-agent-harness is the default lookup path (SGL_ENGINE_SOURCE)
+git clone https://github.com/caty-ai/caty-agent-harness.git ~/claude-workspace/caty-agent-harness
+cd self-growth-loop
+bash tests/run.sh          # 15 suites; the engine integration test drives the real engine
+```
+
+エンジンのチェックアウトが別の場所にある場合は、`SGL_ENGINE_SOURCE` でそのパスを指定してください。
+
+</details>
+
+---
+
+## なぜ安心して試せるのか
+
+- **人間の関門は、単なる建前ではなく構造そのものです。** すべての採用は `PENDING_SHO`——オーナー専用の承認キュー（エンジンの[ガバナンスルール](https://github.com/caty-ai/caty-agent-harness/blob/main/docs/governance-rules.md)、ルールR4）——で止まります。さらにこのリポジトリ自身の[採用ルール](docs/adoption-wiring.md)がすべてのティアにこれを適用するため、最もリスクの低い評議会スキップの経路であっても、オーナーの関与を飛ばすことはありません。検証済みのオーナー承認アーティファクトなしに、レコードが `ADOPTING` へ進むコードパスは存在しません。アイデンティティに関わる変更は、これに加えて必ず評議会全体のレビューも通過します（ルールR12a）。
+- **試行があなたの本番セットアップに触れることはありません。** 試行は隔離されたエンジンのワークスペース内で実行され（[docs/trial-isolation.md](docs/trial-isolation.md)）、このプラグインがエンジンに書き込むのはタスクファイルだけです。
+- **ロックつきのシングルライター・プロトコル。** 台帳は正規の書き込み主体を1つに定めており（加えてlintのための限定的なタイムアウト経路のみ例外）、すべての書き込みは同じロックを通り、すべての状態遷移がイベント行として残ります——状態が密かに書き換えられることはありません（[docs/ledger-spec.md](docs/ledger-spec.md)）。
+- **ロールバックは採用プロセスの一部です。** 検証済みの採用前バックアップ参照がレコードに記録されていない限り承認され得ず、数値化されたロールバック手順は毎日の lint が監査します（[docs/adoption-wiring.md](docs/adoption-wiring.md)）。
+
+こんな方には向きません: 人間を介さずに完全自動で自己改善するエージェントが欲しい方——このツールは、まさにそれを防ぐために作られています。
+
+---
+
+## 単体でも、連携させても
+
+- **単体利用** — このリポジトリと台帳用のディレクトリだけで動きます。提案・lint・レビューを手動で行います（上のクイックスタートで実際にやったことです）。
+- **連携利用** — より大きなセットアップに組み込むこともできます。すべて任意です: アイデアを供給するフィードコレクター（sense）、試行を実行する[caty-agent-harness](https://github.com/caty-ai/caty-agent-harness)エンジン、毎日のlintを回すlaunchd cron（`ops/`、導入手順は[INTEGRATION.md](INTEGRATION.md)）、外部監視があるならデッドマン・ハートビートなど。
+
+---
+
+## 実装済みの機能
+
+| コンポーネント | 状態 | 場所 |
+|---|---|---|
+| 提案台帳（スキーマ、状態遷移、シングルライター） | ✅ 実装済み | [docs/ledger-spec.md](docs/ledger-spec.md), `scripts/propose.sh` (#1) |
+| 失敗の可視化（growth-lint、キューレポート、タイムアウト） | ✅ 実装済み | `scripts/growth-lint.sh` (#2, #5) |
+| 試行ランナー（エンジンの `tr-enqueue` によるタスクバンドル） | ✅ 実装済み | `scripts/trial-enqueue.sh`, `trial-poll.sh` (#6, #21) |
+| 評議会（モデル横断の判定、ティア別クォーラム） | ✅ 実装済み | `scripts/council-*.sh`, [docs/council-wiring.md](docs/council-wiring.md) (#10, #13) |
+| 採用実行系（承認キュー、ロールバック記録） | ✅ 実装済み | `scripts/adopt-*.sh`, [docs/adoption-wiring.md](docs/adoption-wiring.md) (#11, #16) |
+| 共有ライブラリの切り出し | ⏳ 保留中 | 2つ目のプラグインが登場するまで意図的に保留（切り出し方針の詳細はエンジンのplugin-convention参照） |
+
+✅ が付いている行はすべてテストつきで提供されています——`tests/` には15のテストスイートがあり、固定タグの実エンジンを動かすエンジン統合テストも含まれます。
+
+---
+
+## もっと詳しく
+
+| ドキュメント | 内容 |
+|---|---|
+| [INTEGRATION.md](INTEGRATION.md) | エンジンとの接続点、固定バージョン、cronの導入方法、統合テストの方針 |
+| [docs/ledger-spec.md](docs/ledger-spec.md) | レコードのスキーマ、トピックの識別方法、状態遷移、ロック |
+| [docs/trial-isolation.md](docs/trial-isolation.md) | リスクレベル別の隔離ティア |
+| [docs/council-wiring.md](docs/council-wiring.md) | パネル構成、判定スキーマ、クォーラム、リトライ |
+| [docs/adoption-wiring.md](docs/adoption-wiring.md) | 承認関門の仕組み、ロールアウト、ロールバック |
+
+---
+
+## コントリビュート
+
+Issue起点: 1 issue = 1 branch = 1 pull requestとし、自己マージは行いません。詳しくは[CONTRIBUTING.md](CONTRIBUTING.md)と[family dev handbook](https://github.com/caty-ai/family-dev-handbook)を参照してください。
+
+---
+
+## ライセンス
+
+[MIT](LICENSE) — 誰でも自由に使用・学習・発展させることができます。
+
+---
+
+<div align="center">
+
+**bash + ruby、gem不要** ｜ **1提案＝1ファイル** ｜ **すべての変更は人間の関門を通過する**
+
+</div>
