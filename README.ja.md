@@ -130,7 +130,7 @@ bash tests/run.sh          # 15 suites; the engine integration test drives the r
 ## 単体でも、連携させても
 
 - **単体利用** — このリポジトリと台帳用のディレクトリだけで動きます。提案・lint・レビューを手動で行います（上のクイックスタートで実際にやったことです）。
-- **連携利用** — より大きなセットアップに組み込むこともできます。すべて任意です: アイデアを供給するフィードコレクター（sense）、試行を実行する[caty-agent-harness](https://github.com/caty-ai/caty-agent-harness)エンジン、毎日のlintを回すlaunchd cron（`ops/`、導入手順は[INTEGRATION.md](INTEGRATION.md)）、外部監視があるならデッドマン・ハートビートなど。
+- **連携利用** — より大きなセットアップに組み込むこともできます。すべて任意です: アイデアを供給するフィードコレクター（sense・例: [X Collector](https://github.com/caty-ai/x-collector)）、試行を実行する[caty-agent-harness](https://github.com/caty-ai/caty-agent-harness)エンジン、毎日のlintを回すlaunchd cron（`ops/`、導入手順は[INTEGRATION.md](INTEGRATION.md)）、外部監視があるならデッドマン・ハートビートなど。
 
 ---
 
@@ -159,6 +159,26 @@ bash tests/run.sh          # 15 suites; the engine integration test drives the r
 | [docs/council-wiring.md](docs/council-wiring.md) | パネル構成、判定スキーマ、クォーラム、リトライ |
 | [docs/adoption-wiring.md](docs/adoption-wiring.md) | 承認関門の仕組み、ロールアウト、ロールバック |
 
+<!-- family:generated:family-footer:start -->
+
+---
+
+このリポジトリは **Caty AI ファミリー** の一員です — AI エージェントの家族を運用するためのオープンなツール群。公開準備中のモジュールを含む全体の地図は [Family OS](https://github.com/caty-ai/family-os) にあります。
+
+| 軸 | モジュール | 何をするもの | 状態 |
+| --- | --- | --- | --- |
+| 地図 | [Family OS](https://github.com/caty-ai/family-os) | AIファミリー全体の地図 — モジュール・状態・つながり | 公開・MIT |
+| 掟 | [Family Dev Handbook](https://github.com/caty-ai/family-dev-handbook) | 開発の交通ルール — Issue・PR・worktree・受け渡し・並行開発 | 公開・MIT |
+| 縦軸・基盤 | [Caty Agent Harness](https://github.com/caty-ai/caty-agent-harness) | AIエージェントのタスク基盤 — 試行・リトライ・チェックポイント・完了判定 | 公開・MIT |
+| 縦軸 | [context-kit](https://github.com/caty-ai/context-kit) | エージェント1体分のコンテキスト衛生キット — 大出力の退避・委譲ブリーフ検査・安全フック・記憶検索 | 公開・MIT |
+| 縦軸 | [Persona Engine](https://github.com/caty-ai/persona-engine) | エージェントに人格を与える — 人格レイヤーと感情のグラデーション | 公開・MIT |
+| 縦軸 | **Persona Growth Loop** | 人格そのものを育てる — 最小・冪等な提案づくり | 公開準備中 |
+| 縦軸 | [X Collector](https://github.com/caty-ai/x-collector) | Xやウェブの素材を1日1回のダイジェストに — 人にもエージェントにも | 公開・MIT |
+| 縦軸 | **Self Growth Loop** | エージェントが自分の能力を育てるループ — 提案・ガバナンス・採用記録 | 公開・MIT |
+| 横軸・基盤 | [Family Memory Architecture](https://github.com/caty-ai/family-memory-architecture) | 記憶バス — 家族が知っていることを共有する層 | 公開・MIT |
+| 横軸 | [Sitter](https://github.com/caty-ai/sitter) | 委譲したエージェント実行の見張り番 — 監視・証拠の記録・再起動 | 公開・MIT |
+
+<!-- family:generated:family-footer:end -->
 ---
 
 ## コントリビュート
