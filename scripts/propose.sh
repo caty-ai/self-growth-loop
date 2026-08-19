@@ -35,7 +35,7 @@ utc_timestamp() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
 utc_date() { date -u '+%Y-%m-%d'; }
 file_mtime() { stat -f '%m' "$1" 2>/dev/null || stat -c '%Y' "$1" 2>/dev/null; }
 
-yaml_check() { ruby -ryaml -e 'YAML.load_file(ARGV[0])' "$1" >/dev/null 2>&1; }
+yaml_check() { ruby -ryaml -e 'YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])' "$1" >/dev/null 2>&1; }
 
 vault=''; topic_key=''; title=''; state=''; proposer=''; source_url=''; report=''
 risk_tier='T0'; risk_tier_explicit=0; identity_critical='false'; reversibility=''
@@ -185,7 +185,7 @@ validate_record() {
   validation=$(RECORD="$1" ruby -ryaml -e '
     p = ENV["RECORD"]; lines = File.readlines(p)
     abort "frontmatter delimiters" unless lines[0] == "---\n" && (end_i = lines[1..-1].index("---\n"))
-    y = YAML.load_file(p); abort "frontmatter is not a mapping" unless y.is_a?(Hash)
+    y = YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(p) : YAML.load_file(p); abort "frontmatter is not a mapping" unless y.is_a?(Hash)
     %w[state updated source_items].each { |k| abort "missing required key #{k}" unless y.key?(k) }
     abort "source_items is not a list" unless y["source_items"].is_a?(Array)
   ' 2>&1) || damaged "$1" "$validation"
@@ -206,7 +206,7 @@ commit_existing() {
   SOURCE_URL="$source_url" REPORT="$report" TODAY="$today" TIMESTAMP="$timestamp" ACTOR="$actor" \
   IDENTITY_REQUESTED="$identity_critical" ruby -ryaml -rjson -e '
     lines = File.readlines(ENV["RECORD"]); finish = lines[1..-1].index("---\n") + 1
-    fm = YAML.load(lines[0..finish].join); requested = ENV["IDENTITY_REQUESTED"] == "true"
+    fm = YAML.respond_to?(:unsafe_load) ? YAML.unsafe_load(lines[0..finish].join) : YAML.load(lines[0..finish].join); requested = ENV["IDENTITY_REQUESTED"] == "true"
     old_identity = fm["identity_critical"] == true; old_risk = fm["risk_tier"]
     force_identity = requested || old_identity; clamp = force_identity && old_risk != "T2"
     out = []; in_items = false; inserted = false
@@ -260,11 +260,11 @@ if [ -n "$supersedes" ]; then
   # Append the old-file event through the same checked atomic replacement mechanism.
   saved_record=$record; saved_key=$topic_key; record=$old_record; topic_key=$supersedes
   commit_existing "$(ruby -ryaml -e '
-    state = YAML.load_file(ARGV[0])["state"]
+    state = (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["state"]
     # legacy-read: PENDING_SHO accepted until v1.0 (issue #10)
     state = "PENDING_OWNER" if state == "PENDING_SHO"
     puts state
-  ' "$record")" "$(ruby -ryaml -e 'puts YAML.load_file(ARGV[0])["cooldown_until"] || ""' "$record")" false false SUPERSEDED_BY "$saved_key"
+  ' "$record")" "$(ruby -ryaml -e 'puts (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["cooldown_until"] || ""' "$record")" false false SUPERSEDED_BY "$saved_key"
   record=$saved_record; topic_key=$saved_key
   echo "CREATED $record"
   exit 0
@@ -290,21 +290,21 @@ fi
 validate_record "$record"
 
 existing_state=$(ruby -ryaml -e '
-  state = YAML.load_file(ARGV[0])["state"]
+  state = (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["state"]
   # legacy-read: PENDING_SHO accepted until v1.0 (issue #10)
   state = "PENDING_OWNER" if state == "PENDING_SHO"
   puts state
 ' "$record")
-cooldown_until=$(ruby -ryaml -e 'v=YAML.load_file(ARGV[0])["cooldown_until"]; puts v unless v.nil?' "$record")
+cooldown_until=$(ruby -ryaml -e 'v=(YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["cooldown_until"]; puts v unless v.nil?' "$record")
 if [ -n "$now_override" ]; then now_iso=$timestamp; else now_iso=$(utc_timestamp); fi
 in_cooldown=0
 [ -n "$cooldown_until" ] && [[ "$cooldown_until" > "$now_iso" ]] && in_cooldown=1
 duplicate=false
-SOURCE_URL="$source_url" ruby -ryaml -e 'exit((YAML.load_file(ARGV[0])["source_items"] || []).any? { |x| x.is_a?(Hash) && x["url"] == ENV["SOURCE_URL"] } ? 0 : 1)' "$record" && duplicate=true
+SOURCE_URL="$source_url" ruby -ryaml -e 'exit(((YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["source_items"] || []).any? { |x| x.is_a?(Hash) && x["url"] == ENV["SOURCE_URL"] } ? 0 : 1)' "$record" && duplicate=true
 add_source=true; [ "$duplicate" = true ] && add_source=false
 
-existing_identity=$(ruby -ryaml -e 'puts YAML.load_file(ARGV[0])["identity_critical"] == true ? "true" : "false"' "$record")
-existing_risk=$(ruby -ryaml -e 'puts YAML.load_file(ARGV[0])["risk_tier"]' "$record")
+existing_identity=$(ruby -ryaml -e 'puts (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["identity_critical"] == true ? "true" : "false"' "$record")
+existing_risk=$(ruby -ryaml -e 'puts (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["risk_tier"]' "$record")
 clamp_note=''
 if [ "$identity_critical" = true ] || { [ "$existing_identity" = true ] && [ "$existing_risk" != T2 ]; }; then
   clamp_note='IDENTITY_CRITICAL'; clamp_reason='identity-critical routing set/clamped to T2'

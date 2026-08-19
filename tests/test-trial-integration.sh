@@ -122,7 +122,7 @@ TR_SPAWN_STEP="$spawn_step" "$engine/scripts/task-runner.sh" "$workspace" \
 
 "$poll" --vault "$vault" --workspace "$workspace" --now 2026-07-21T12:05:00Z \
   >"$tmp/poll-delivered.out" || fail "poll failed after real delivery"
-ruby -ryaml -e 'abort unless YAML.load_file(ARGV[0])["state"] == "COUNCIL"' \
+ruby -ryaml -e 'abort unless (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["state"] == "COUNCIL"' \
   "$ledger/integration__vendor.md" || fail "delivered integration trial did not advance to COUNCIL"
 grep -q "TRIALING→COUNCIL — task $task_id delivered" "$ledger/integration__vendor.md" \
   || fail "delivered integration event is missing the task token"
@@ -138,7 +138,7 @@ mkdir -p "$workspace/loop/artifacts/$dlq_task_id"
 printf '{"status":"dlq"}\n' >"$workspace/loop/artifacts/$dlq_task_id/state.json"
 "$poll" --vault "$vault" --workspace "$workspace" --now 2026-07-21T12:10:00Z \
   >"$tmp/poll-dlq.out" || fail "poll failed for simulated terminal DLQ"
-ruby -ryaml -e 'abort unless YAML.load_file(ARGV[0])["state"] == "DLQ"' \
+ruby -ryaml -e 'abort unless (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["state"] == "DLQ"' \
   "$ledger/integration-dlq__vendor.md" || fail "terminal DLQ task did not advance the record"
 grep -q "TRIALING→DLQ — task $dlq_task_id abandoned to engine DLQ" \
   "$ledger/integration-dlq__vendor.md" || fail "DLQ integration event is missing the task token"
@@ -152,7 +152,7 @@ set +e
 missing_status=$?
 set -e
 [ "$missing_status" -ne 0 ] || fail "poll accepted an empty delivered directory"
-ruby -ryaml -e 'abort unless YAML.load_file(ARGV[0])["state"] == "TRIALING"' \
+ruby -ryaml -e 'abort unless (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["state"] == "TRIALING"' \
   "$ledger/integration-missing__vendor.md" || fail "empty delivered directory advanced the record"
 grep -q "DAMAGED_EVIDENCE integration-missing__vendor: missing artifact state.json" "$tmp/poll-missing.err" \
   || fail "missing empty-delivered evidence diagnostic"

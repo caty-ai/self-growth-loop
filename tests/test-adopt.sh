@@ -125,7 +125,7 @@ RUBY
 assert_verified() {
   expected_decision=$1 expected_state=$2
   ruby -ryaml -e '
-    d = YAML.load_file(ARGV[0])
+    d = YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])
     owner = d["owner_confirmation"]
     abort unless d["state"] == ARGV[1]
     abort unless owner.keys == %w[status assurance reference proposal_digest decision principal verified_at]
@@ -162,7 +162,7 @@ extract_owner_confirmation_block() {
 
 state_time_offset() {
   ruby -ryaml -rtime -e '
-    t = Time.iso8601(YAML.load_file(ARGV[0]).fetch("state_entered_at"))
+    t = Time.iso8601((YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])).fetch("state_entered_at"))
     print (t + ARGV[1].to_i).utc.strftime("%Y-%m-%dT%H:%M:%SZ")
   ' "$1" "$2"
 }
@@ -221,7 +221,7 @@ done
 
 # Stale digest takes precedence over retry ordering; missing is distinct.
 vault="$tmp/go/vault"; topic=go__tool; record="$vault/45_ai-systems/self-growth/proposals/$topic.md"
-reference=$(ruby -ryaml -e 'print YAML.load_file(ARGV[0]).dig("owner_confirmation","reference")' "$record")
+reference=$(ruby -ryaml -e 'print (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])).dig("owner_confirmation","reference")' "$record")
 zeros=$(printf '%064d' 0)
 stale_reference="${reference%sha256:*}sha256:$zeros"
 cp "$record" "$tmp/go.before-errors"
@@ -257,7 +257,7 @@ cmp -s "$record" "$tmp/expired.before" || fail "expired artifact changed proposa
 
 # A downstream target-state change is not an idempotent retry.
 vault="$tmp/go/vault"; topic=go__tool; record="$vault/45_ai-systems/self-growth/proposals/$topic.md"
-reference=$(ruby -ryaml -e 'print YAML.load_file(ARGV[0]).dig("owner_confirmation","reference")' "$record")
+reference=$(ruby -ryaml -e 'print (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])).dig("owner_confirmation","reference")' "$record")
 sed -i '' 's/^state: ADOPTING$/state: ADOPTED/' "$record"
 cp "$record" "$tmp/target.before"
 if "$approve" --vault "$vault" --topic "$topic" --authorization-ref "$reference" \
@@ -335,7 +335,7 @@ grep -q 'rollback verified' "$record" || fail "v2 rollback event missing"
 extract_owner_confirmation_block "$record" >"$tmp/rollback.owner.after"
 cmp -s "$tmp/abort.owner.before" "$tmp/rollback.owner.after" || fail "rollback rewrote owner_confirmation bytes"
 expected_cooldown=$(ruby -rtime -e 'print (Time.iso8601(ARGV[0]) + (30 * 86400)).utc.strftime("%Y-%m-%d")' "$rollback_now")
-ruby -ryaml -e 'exit(YAML.load_file(ARGV[0])["cooldown_until"].to_s.start_with?(ARGV[1]) ? 0 : 1)' "$record" "$expected_cooldown" >/dev/null || fail "v2 rollback cooldown missing"
+ruby -ryaml -e 'exit((YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["cooldown_until"].to_s.start_with?(ARGV[1]) ? 0 : 1)' "$record" "$expected_cooldown" >/dev/null || fail "v2 rollback cooldown missing"
 
 # Completion regressions from the legacy path remain protected for v2 records.
 new_case window; topic=window__tool; write_pending_t0 "$topic"
@@ -445,7 +445,7 @@ if "$complete" --vault "$vault" --topic "$topic" --smoke-result "$tmp/smoke.md" 
 fi
 cmp -s "$record" "$tmp/symlink-parent.before" || fail "symlinked adoption-record parent changed proposal"
 [ -z "$(find "$external_decisions" -mindepth 1 -print -quit)" ] || fail "symlink target was modified"
-ruby -ryaml -e 'abort unless YAML.load_file(ARGV[0]).dig("links","adoption_entry").to_s.empty?' "$record" || fail "symlink refusal persisted adoption entry"
+ruby -ryaml -e 'abort unless (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])).dig("links","adoption_entry").to_s.empty?' "$record" || fail "symlink refusal persisted adoption entry"
 [ -L "$vault/30_decisions" ] || fail "symlink parent was replaced or removed"
 rm "$vault/30_decisions"
 

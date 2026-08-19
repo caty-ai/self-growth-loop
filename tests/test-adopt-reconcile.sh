@@ -63,7 +63,7 @@ backup_for() {
 assert_v2() {
   expected_attempt=$1 expected_state=$2
   ruby -ryaml -e '
-    d=YAML.load_file(ARGV[0])
+    d=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])
     abort unless d.keys == %w[schema topic_key title state state_entered_at risk_tier identity_critical tiebreak proposer executor_agent executor_model created updated cooldown_until retry_count proposal_attempt owner_confirmation source_items links backup_ref effect_metric report_due reversibility]
     abort unless d["schema"]=="sgl-proposal/v2" && d["state"]==ARGV[1] && d["proposal_attempt"]==ARGV[2].to_i
     abort unless d["owner_confirmation"]=={"status"=>"pending","assurance"=>"standard","reference"=>"","proposal_digest"=>"","decision"=>"","principal"=>"","verified_at"=>""}
