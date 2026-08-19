@@ -88,6 +88,18 @@ for decision in GO REJECT WATCH; do
   grep -Fq "$decision (NON-EXECUTABLE TEMPLATE): scripts/adopt-confirm.sh" "$queue" || fail "$decision confirmation template missing"
 done
 
+if ! command -v expect >/dev/null 2>&1 || ! expect <<'EXPECT' >/dev/null 2>&1
+set timeout 5
+spawn ruby -e {File.open("/dev/tty", "r+") {}}
+expect eof
+set result [wait]
+exit [lindex $result 3]
+EXPECT
+then
+  echo "SKIP: expect not available — PTY regression coverage skipped (test-adopt-integration.sh)"
+  exit 3
+fi
+
 backup="snapshot O'Brien"
 metric="queue review time"
 due=$report_due
