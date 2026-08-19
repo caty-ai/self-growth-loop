@@ -178,7 +178,7 @@ run_quorum() {
     assert_attempt_namespace_absent!(vault_root, next_record.fetch("topic_key"), next_record.fetch("proposal_attempt"))
     next_record["state_entered_at"] = canonical_timestamp_value(transition_at, "transition_at")
     next_record["updated"] = now[0, 10]
-    next_record.body_bytes = append_event(proposal.body_bytes, "- #{now} alpha COUNCIL→PENDING_SHO — #{event}\n")
+    next_record.body_bytes = append_event(proposal.body_bytes, "- #{now} alpha COUNCIL→PENDING_OWNER — #{event}\n")
     OwnerConfirmation.validate_and_rewrite_proposal_v2!(record: next_record, path: proposal.path)
     next_record
   end
@@ -207,7 +207,7 @@ run_quorum() {
     decision = manifest["decision"].to_s
     if record["state"].to_s == "COUNCIL"
       target = if decision == "GO" || decision == "GO (Sho override of security veto)"
-        "PENDING_SHO"
+        "PENDING_OWNER"
       elsif decision.start_with?("NO-GO")
         "REJECTED"
       end
@@ -223,7 +223,7 @@ run_quorum() {
         rescue
           repair_note = "; state_entered_at fallback to repair time (missing, invalid, pre-COUNCIL, or future decision_at)"
         end
-        if target == "PENDING_SHO"
+        if target == "PENDING_OWNER"
           proposal = OwnerConfirmation.load_proposal_record(path: record_path)
           OwnerConfirmation.derive_council_evidence(vault_root: vault, record: proposal)
           transition_fresh_pending_sho!(
@@ -373,12 +373,12 @@ run_quorum() {
     manifest["sealed"] = true; manifest["decision"] = report_decision; manifest["decision_at"] = canonical_timestamp_value(now, "decision_at")
     write_atomic(manifest_path, YAML.dump(manifest)) { |tmp| d = load_yaml(tmp); raise "manifest postcondition failed" unless d["sealed"] == true && d["decision"].to_s == report_decision }
   end
-  target = row == 1 ? "PENDING_SHO" : (row == 3 || row == 5 ? "REJECTED" : nil)
+  target = row == 1 ? "PENDING_OWNER" : (row == 3 || row == 5 ? "REJECTED" : nil)
   if target
     event = if row == 1 then "council GO — quorum #{go}/3, task #{task}#{votes.any? { |v| v != "GO" } ? "; with dissent" : ""}"
       elsif row == 5 then "council RETRY with retries_exhausted → REJECTED"
       else "council NO-GO — quorum #{nogo}/3, task #{task}" end
-    if target == "PENDING_SHO"
+    if target == "PENDING_OWNER"
       proposal = OwnerConfirmation.load_proposal_record(path: record_path)
       OwnerConfirmation.derive_council_evidence(vault_root: vault, record: proposal)
       transition_fresh_pending_sho!(

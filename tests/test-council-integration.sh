@@ -74,7 +74,7 @@ EOF
 }
 for lens in utility cost security; do body "$tmp/$lens.md" GO; bash "$record" --vault "$vault" --topic "$topic" --workspace "$workspace" --lens "$lens" --task-id "$task" --verdict-body "$tmp/$lens.md" --now "$now" >"$tmp/$lens.out" || fail "$lens record failed"; done
 bash "$quorum" --vault "$vault" --topic "$topic" --workspace "$workspace" --apply --now "$now" >"$tmp/quorum.out" || fail "quorum apply failed"
-grep -q '^state: PENDING_SHO$' "$ledger/$topic.md" || fail "record did not reach PENDING_SHO"
+grep -q '^state: PENDING_OWNER$' "$ledger/$topic.md" || fail "record did not reach PENDING_OWNER"
 ruby -ryaml -e '
   d=YAML.load_file(ARGV[0])
   abort unless d["schema"]=="sgl-proposal/v2" && d["proposal_attempt"]==1
@@ -82,7 +82,7 @@ ruby -ryaml -e '
     "status"=>"pending", "assurance"=>"standard", "reference"=>"",
     "proposal_digest"=>"", "decision"=>"", "principal"=>"", "verified_at"=>""
   }
-' "$ledger/$topic.md" || fail "PENDING_SHO attempt/reset mapping invalid"
+' "$ledger/$topic.md" || fail "PENDING_OWNER attempt/reset mapping invalid"
 REPO_ROOT="$root" VAULT_ROOT="$vault" RECORD_PATH="$ledger/$topic.md" ruby <<'RUBY' || fail "UTF-8 council evidence validation failed"
 require File.join(ENV.fetch("REPO_ROOT"), "scripts/lib-owner-confirmation")
 record = OwnerConfirmation.load_proposal_record(path: ENV.fetch("RECORD_PATH"))

@@ -4,7 +4,7 @@ This document covers the owner bootstrap, issuance boundary, queue wording, cons
 
 ## Gate Mechanics
 
-`PENDING_SHO` records appear as decision cards in the self-growth queue. Sho
+`PENDING_OWNER` records appear as decision cards in the self-growth queue. Sho
 approves, rejects, or parks them through the morning reply or a vault append;
 there is no new approval channel. The human gate always applies, including the
 T0 council-skip path. After 30 days the record becomes `EXPIRED` without
@@ -115,7 +115,7 @@ The consume path alone uses the stale/expired/target-changed tokens:
 - reconcile / migrate: `--vault <root> --topic <key> [--workspace <root>] [--now <ISO8601Z>]`
 - restore: `--vault <root> --topic <key> --restore-backup <vault-relative path>`
 
-`--workspace` is only valid for legacy T0 `PENDING_SHO` reconciliation. It is rejected everywhere else, and it is incompatible with `--restore-backup`.
+`--workspace` is only valid for legacy T0 `PENDING_OWNER` reconciliation. It is rejected everywhere else, and it is incompatible with `--restore-backup`.
 
 The legacy T0 path reads the exact workspace root and the exact sealed T0 artifact. The live workspace is only consulted during that legacy T0 migration/recovery path.
 Legacy T0 repair is exact-form only: restore the sealed `sgl-t0-skip/v1` block

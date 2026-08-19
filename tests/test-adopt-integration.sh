@@ -28,7 +28,7 @@ cat >"$ledger/$topic.md" <<EOF
 schema: sgl-proposal/v2
 topic_key: $topic
 title: T0 サンプル採用
-state: PENDING_SHO
+state: PENDING_OWNER
 state_entered_at: 2026-07-20T00:00:00Z
 risk_tier: T0
 identity_critical: false
@@ -66,7 +66,7 @@ reversibility: "git revert one commit, <10 min, データ損失なし"
 
 ## Events (append-only)
 
-- 2026-07-20T00:00:00Z alpha COUNCIL→PENDING_SHO — auto-adopt path (T0), council skipped
+- 2026-07-20T00:00:00Z alpha COUNCIL→PENDING_OWNER — auto-adopt path (T0), council skipped
 EOF
 cat >"$vault/45_ai-systems/self-growth/council/$topic/$task.t0-skip.md" <<EOF
 sgl-t0-skip/v1

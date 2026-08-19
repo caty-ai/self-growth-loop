@@ -259,7 +259,12 @@ if [ -n "$supersedes" ]; then
   fi
   # Append the old-file event through the same checked atomic replacement mechanism.
   saved_record=$record; saved_key=$topic_key; record=$old_record; topic_key=$supersedes
-  commit_existing "$(ruby -ryaml -e 'puts YAML.load_file(ARGV[0])["state"]' "$record")" "$(ruby -ryaml -e 'puts YAML.load_file(ARGV[0])["cooldown_until"] || ""' "$record")" false false SUPERSEDED_BY "$saved_key"
+  commit_existing "$(ruby -ryaml -e '
+    state = YAML.load_file(ARGV[0])["state"]
+    # legacy-read: PENDING_SHO accepted until v1.0 (issue #10)
+    state = "PENDING_OWNER" if state == "PENDING_SHO"
+    puts state
+  ' "$record")" "$(ruby -ryaml -e 'puts YAML.load_file(ARGV[0])["cooldown_until"] || ""' "$record")" false false SUPERSEDED_BY "$saved_key"
   record=$saved_record; topic_key=$saved_key
   echo "CREATED $record"
   exit 0
@@ -284,7 +289,12 @@ if [ -n "$redirect" ]; then
 fi
 validate_record "$record"
 
-existing_state=$(ruby -ryaml -e 'puts YAML.load_file(ARGV[0])["state"]' "$record")
+existing_state=$(ruby -ryaml -e '
+  state = YAML.load_file(ARGV[0])["state"]
+  # legacy-read: PENDING_SHO accepted until v1.0 (issue #10)
+  state = "PENDING_OWNER" if state == "PENDING_SHO"
+  puts state
+' "$record")
 cooldown_until=$(ruby -ryaml -e 'v=YAML.load_file(ARGV[0])["cooldown_until"]; puts v unless v.nil?' "$record")
 if [ -n "$now_override" ]; then now_iso=$timestamp; else now_iso=$(utc_timestamp); fi
 in_cooldown=0

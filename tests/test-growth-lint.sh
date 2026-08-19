@@ -62,9 +62,11 @@ set_verified_confirmation() {
 call_propose trial__community 'Trial item'; trial="$ledger/trial__community.md"
 set_field "$trial" state TRIALING; set_field "$trial" state_entered_at 2026-07-24T00:00:00Z; set_field "$trial" executor_agent beta
 call_propose expired__community 'Expired pending'; expired="$ledger/expired__community.md"
-set_field "$expired" state PENDING_SHO; set_field "$expired" state_entered_at 2026-07-01T00:00:00Z
+set_field "$expired" state PENDING_OWNER; set_field "$expired" state_entered_at 2026-07-01T00:00:00Z
 call_propose reminder__community 'Reminder pending'; reminder="$ledger/reminder__community.md"
-set_field "$reminder" state PENDING_SHO; set_field "$reminder" state_entered_at 2026-07-16T00:00:00Z
+set_field "$reminder" state PENDING_OWNER; set_field "$reminder" state_entered_at 2026-07-16T00:00:00Z
+"$propose" --vault "$vault" --topic-key legacy-read__community --title 'Legacy pending' --state PROPOSED --proposer alpha --url https://legacy-read.test --report source.md --reversibility 'git revert one commit' --judgement 'Legacy pending read fixture.' --now 2026-07-31T00:00:00Z >/dev/null || fail 'legacy pending fixture setup failed'
+legacy_read="$ledger/legacy-read__community.md"; set_field "$legacy_read" state PENDING_SHO; set_field "$legacy_read" state_entered_at 2026-07-20T00:00:00Z; set_field "$legacy_read" proposal_attempt 1
 call_propose rollout__community 'Rollout item'; rollout="$ledger/rollout__community.md"
 set_field "$rollout" state ADOPTING; set_field "$rollout" state_entered_at 2026-07-24T00:00:00Z; set_field "$rollout" reversibility 'git revert one commit'; set_field "$rollout" proposal_attempt 1
 set_verified_confirmation "$rollout" rollout__community 1 2026-07-24T00:00:00Z
@@ -77,14 +79,20 @@ printf '%s\n' '2026-08-01T00:00:00Z mine FAIL feed unavailable' > "$vault/45_ai-
 "$lint" --vault "$vault" --now 2026-08-01T00:00:00Z >/dev/null || fail 'lint failed'
 assert_contains "$(state_of "$trial")" DLQ
 assert_contains "$(state_of "$expired")" EXPIRED
-assert_pending_confirmation "$expired" 'PENDING_SHO expiry corrupted canonical pending owner confirmation'
-grep -q '^cooldown_until: ""$' "$expired" || fail 'PENDING_SHO expiry set a cooldown'
-assert_contains "$(state_of "$reminder")" PENDING_SHO
+assert_pending_confirmation "$expired" 'PENDING_OWNER expiry corrupted canonical pending owner confirmation'
+grep -q '^cooldown_until: ""$' "$expired" || fail 'PENDING_OWNER expiry set a cooldown'
+assert_contains "$(state_of "$reminder")" PENDING_OWNER
 assert_contains "$(state_of "$rollout")" DLQ
 grep -Fq 'rollback_required: git revert one commit' "$rollout" || fail 'ADOPTING rollback requirement absent'
 queue="$vault/25_review-pending/self-growth-queue.md"
-grep -Fq '## PENDING_SHO' "$queue" || fail 'pending section missing'
+grep -Fq '## PENDING_OWNER' "$queue" || fail 'pending section missing'
 grep -Fq 'reminder__community' "$queue" || fail 'pending reminder absent'
+awk '/## PENDING_OWNER/{p=1;next} /^## /{p=0} p' "$queue" | grep -Fq 'legacy-read__community' || fail 'legacy pending state fell out of the owner queue'
+ruby - "$root" "$legacy_read" <<'RUBY' || fail 'shared proposal reader did not normalize the legacy pending state'
+root, path = ARGV
+require File.join(root, 'scripts/lib-owner-confirmation')
+abort unless OwnerConfirmation.load_proposal_record(path: path)['state'] == 'PENDING_OWNER'
+RUBY
 grep -Fq 'SENSE BROKEN' "$queue" || fail 'failed sensor not visible'
 grep -Fq 'effect report overdue — escalated to Sho' "$adopted" || fail 'effect report escalation absent'
 # shellcheck disable=SC2016 # literal Markdown command text
@@ -96,7 +104,7 @@ rm -f "$vault/45_ai-systems/self-growth/sense-status.log"
 grep -Fq 'SENSE BROKEN' "$queue" || fail 'missing sensor status not visible'
 # Escalation pin is sticky on the second run, and the event is appended only once.
 grep -Fq 'adopted__community' "$queue" || fail 'unresolved effect-report escalation dropped from queue on rerun'
-awk '/## PENDING_SHO/{p=1;next} /^## /{p=0} p' "$queue" | grep -Fq 'adopted__community' || fail 'escalation not pinned in PENDING_SHO section on rerun'
+awk '/## PENDING_OWNER/{p=1;next} /^## /{p=0} p' "$queue" | grep -Fq 'adopted__community' || fail 'escalation not pinned in PENDING_OWNER section on rerun'
 [ "$(grep -c 'EFFECT_REPORT_OVERDUE' "$adopted")" -eq 1 ] || fail 'escalation event duplicated on rerun'
 
 # Dry run must leave the vault byte-for-byte untouched, including its report.
@@ -151,7 +159,7 @@ cat >"$form_mismatch" <<'EOF'
 schema: sgl-proposal/v2
 topic_key: form-mismatch__community
 title: "Form mismatch"
-state: PENDING_SHO
+state: PENDING_OWNER
 state_entered_at: 2026-07-01T00:00:00Z
 risk_tier: T0
 identity_critical: false
@@ -195,15 +203,15 @@ mkdir -p "$v2/45_ai-systems/self-growth"; printf '%s\n' '2026-08-01T00:00:00Z mi
 "$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >/dev/null || fail 'hardening lint failed'
 assert_contains "$(state_of "$exact")" EXPIRED
 [ "$(stat -f '%Lp' "$exact")" = 600 ] || fail 'rewritten record mode not preserved'
-[ "$(state_of "$form_mismatch")" = PENDING_SHO ] || fail 'invalid v2 state/form record mutated before damage classification'
-! grep -Fq 'growth-lint PENDING_SHO→EXPIRED' "$form_mismatch" || fail 'invalid v2 state/form record appended an SLA transition'
+[ "$(state_of "$form_mismatch")" = PENDING_OWNER ] || fail 'invalid v2 state/form record mutated before damage classification'
+! grep -Fq 'growth-lint PENDING_OWNER→EXPIRED' "$form_mismatch" || fail 'invalid v2 state/form record appended an SLA transition'
 q2="$v2/25_review-pending/self-growth-queue.md"
 grep -Fq 'RUN ERRORS:' "$q2" || fail 'bad record did not publish run-error banner'
 grep -Fq 'DAMAGED bad__community.md' "$q2" || fail 'quoted state key not damaged'
 grep -Fq 'DAMAGED utf__community.md' "$q2" || fail 'invalid UTF-8 not damaged'
 grep -Fq 'DAMAGED form-mismatch__community.md — record-damaged: state/owner_confirmation form mismatch' "$q2" || fail 'state/form mismatch did not damage before mutation'
 call_propose card__community 'Damaged card'; card="$l2/card__community.md"
-set_field "$card" state PENDING_SHO; set_field "$card" state_entered_at 2026-07-20T00:00:00Z
+set_field "$card" state PENDING_OWNER; set_field "$card" state_entered_at 2026-07-20T00:00:00Z
 set_field "$card" links broken
 set_field "$card" risk_tier T1
 "$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >/dev/null || fail 'damaged card lint failed'
@@ -211,7 +219,7 @@ grep -Fq 'card__community' "$q2" || fail 'damaged card was not fail-visible'
 
 # A sealed T1 quorum renders the per-seat vote table and dissent text verbatim.
 call_propose t1__community 'T1 quorum card'; t1="$l2/t1__community.md"
-set_field "$t1" state PENDING_SHO; set_field "$t1" state_entered_at 2026-07-20T00:00:00Z; set_field "$t1" risk_tier T1
+set_field "$t1" state PENDING_OWNER; set_field "$t1" state_entered_at 2026-07-20T00:00:00Z; set_field "$t1" risk_tier T1
 council_dir="$v2/45_ai-systems/self-growth/council/t1__community"; mkdir -p "$council_dir"
 cat >"$council_dir/2026-07-21.quorum.md" <<'EOF'
 sealed: true
@@ -274,9 +282,9 @@ authv=$(mktemp -d "${TMPDIR:-/tmp}/growth-owner.XXXXXX")
 authl="$authv/45_ai-systems/self-growth/proposals"; mkdir -p "$authl" "$authv/45_ai-systems/self-growth/config"
 vault=$authv; ledger=$authl
 call_propose blocked__community 'Blocked owner'; blocked="$authl/blocked__community.md"
-set_field "$blocked" state PENDING_SHO; set_field "$blocked" state_entered_at 2026-07-15T00:00:00Z; set_field "$blocked" proposal_attempt 1
+set_field "$blocked" state PENDING_OWNER; set_field "$blocked" state_entered_at 2026-07-15T00:00:00Z; set_field "$blocked" proposal_attempt 1
 call_propose sla__community 'SLA continues'; sla="$authl/sla__community.md"
-set_field "$sla" state PENDING_SHO; set_field "$sla" state_entered_at 2026-06-01T00:00:00Z; set_field "$sla" proposal_attempt 1
+set_field "$sla" state PENDING_OWNER; set_field "$sla" state_entered_at 2026-06-01T00:00:00Z; set_field "$sla" proposal_attempt 1
 printf 'schema: wrong\n' >"$authv/45_ai-systems/self-growth/config/owner.yaml"
 mkdir -p "$authv/45_ai-systems/self-growth"; printf '%s\n' '2026-08-01T00:00:00Z mine OK ok' >"$authv/45_ai-systems/self-growth/sense-status.log"
 "$lint" --vault "$authv" --now 2026-08-01T00:00:00Z >/dev/null || fail 'owner-config isolation lint failed'

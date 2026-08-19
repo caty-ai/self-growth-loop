@@ -102,11 +102,11 @@ re-verifies because the schema does not enforce it.)
 ### T0 fast path (decided at convene, not at quorum)
 
 `risk_tier: T0` and `identity_critical: false`: no panel is seated. Convene
-writes `<task-id>.t0-skip.md` and executes COUNCIL→PENDING_SHO (event:
+writes `<task-id>.t0-skip.md` and executes COUNCIL→PENDING_OWNER (event:
 `auto-adopt path (T0), council skipped`). The fast path skips the *panel*,
 never the human gate. `identity_critical: true` records are machine-refused
 here (spec clamps them to T2; a T0+identity-critical record is damaged).
-Every fresh COUNCIL→PENDING_SHO transition mints the next v2 attempt, resets
+Every fresh COUNCIL→PENDING_OWNER transition mints the next v2 attempt, resets
 `owner_confirmation` to pending, and fails closed with
 `attempt-namespace-occupied` if the derived attempt namespace already exists.
 The sealed T0 artifact is the `sgl-t0-skip/v1` block; the older prose note is
@@ -132,7 +132,7 @@ length-bounded (4 000 chars/seat) indented literal block with a pointer to the
 raw file — evaluator Markdown is DATA, never document structure (no heading /
 fence / frontmatter of a verdict can restructure an Alpha-generated report).
 A GO with a security dissent is not a clean GO: the dissent travels into the
-PENDING_SHO surface so Sho sees it before approving.
+PENDING_OWNER surface so Sho sees it before approving.
 
 ## 4. Verdict schema and recording
 
@@ -193,7 +193,7 @@ rows top-down, first match wins; inputs: verdicts + `risk_tier`,
 
 | # | Condition | Decision | Ledger transition |
 |---|---|---|---|
-| 1 | GO ≥ 2 AND (tier = T1 OR security verdict = GO) | **GO** (all dissents attached) | COUNCIL→PENDING_SHO |
+| 1 | GO ≥ 2 AND (tier = T1 OR security verdict = GO) | **GO** (all dissents attached) | COUNCIL→PENDING_OWNER |
 | 2 | tier = T2 AND security verdict = NO-GO AND GO ≥ 2 | **BLOCKED_SECURITY_VETO** — resolution per §5a | none (stays COUNCIL; 3 d SLA runs) |
 | 3 | NO-GO ≥ 2 | **NO-GO** | COUNCIL→REJECTED (30 d cooldown, spec §5) |
 | 4 | RETRY ≥ 1 AND `retry_count` < 2 | **RETRY** (§7) | COUNCIL→TRIALING re-enqueue |
@@ -207,7 +207,7 @@ the transition under the lock. A sealed round never recomputes; later
 deliveries land as `.late.md`. Verdicts are counted only if their `task_id`
 AND attempt id match the manifest's active attempts — stale rounds never vote.
 If an apply is interrupted, rerunning `--apply` repairs the same round instead
-of minting a new one: fresh `PENDING_SHO` replays go through
+of minting a new one: fresh `PENDING_OWNER` replays go through
 `transition_fresh_pending_sho!`, which mints the next attempt and resets the
 pending owner-confirmation mapping.
 
@@ -374,7 +374,7 @@ council-convene.sh --vault <root> --topic <topic_key> --workspace <engine-worksp
 - T0 fast path per §2. Otherwise: seats per §2 rules (vendor/family checks on
   canonical identities), freezes digests, writes manifest + `a1` briefs, sets
   `links.council_verdicts`, appends the convene event. The T0 path writes the
-  sealed `sgl-t0-skip/v1` artifact before the `PENDING_SHO` rewrite.
+  sealed `sgl-t0-skip/v1` artifact before the `PENDING_OWNER` rewrite.
 - `--fallback <lens>` appends attempt `a<N+1>` per §6.
 
 Manifest schema (`sgl-council-convene/v1`):

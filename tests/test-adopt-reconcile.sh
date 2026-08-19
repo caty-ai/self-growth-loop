@@ -216,7 +216,7 @@ cp "$record" "$tmp/t0.legacy-proposal"
 cp "$t0_artifact" "$tmp/t0.legacy-artifact"
 "$reconcile" --vault "$vault" --topic "$topic" --workspace "$workspace" --now 2026-07-21T00:00:00Z \
   >"$tmp/t0.out" || fail "legacy T0 reconcile failed"
-assert_v2 1 PENDING_SHO
+assert_v2 1 PENDING_OWNER
 grep -q '^sgl-t0-skip/v1$' "$t0_artifact" || fail "legacy T0 evidence was not sealed"
 t0_backup=$(backup_for)
 [ -f "$t0_backup" ] || fail "T0 backup missing"
@@ -235,7 +235,7 @@ cp "$tmp/t0.legacy-proposal" "$record"
 "$reconcile" --vault "$vault" --topic "$topic" --workspace "$workspace" --now 2026-07-22T00:00:00Z \
   >"$tmp/t0.repair" || fail "T0 crash repair failed"
 grep -Eq 'REPAIRED|RECONCILED' "$tmp/t0.repair" || fail "T0 crash repair was not reported"
-assert_v2 1 PENDING_SHO
+assert_v2 1 PENDING_OWNER
 [ "$(backup_for | wc -l | tr -d ' ')" -eq 1 ] || fail "T0 repair created a duplicate backup"
 
 cp "$record" "$tmp/t0.before-drift"
@@ -259,5 +259,32 @@ cp "$t0_artifact" "$tmp/t0.after-restore.artifact"
 "$reconcile" --vault "$vault" --topic "$topic" --restore-backup "$t0_relative" >"$tmp/t0.restore.rerun" || fail "T0 restore rerun failed"
 cmp -s "$record" "$tmp/t0.after-restore.proposal" || fail "T0 restore rerun changed proposal"
 cmp -s "$t0_artifact" "$tmp/t0.after-restore.artifact" || fail "T0 restore rerun changed legacy evidence"
+
+# Renamed v1 T0 prose remains readable too, and its exact bytes survive backup
+# validation and restore.
+new_case t0-current; topic=current-t0__tool; write_legacy "$topic" PENDING_OWNER T0
+workspace="$tmp/t0-current/workspace"
+bundle="$workspace/loop/artifacts/$task/out/bundle"
+packet="$vault/45_ai-systems/self-growth/trial-packets/$task.md"
+t0_artifact="$vault/45_ai-systems/self-growth/council/$topic/$task.t0-skip.md"
+mkdir -p "$bundle" "$(dirname "$packet")" "$(dirname "$t0_artifact")"
+for file in $files; do printf 'fixture %s\n' "$file" >"$bundle/$file"; done
+printf '# Packet\n\nCurrent-form T0 packet.\n' >"$packet"
+cat >"$t0_artifact" <<EOF
+T0 fast path: this reversible, non-identity-critical proposal skips council review and remains subject to the Sho human gate.
+
+- 2026-07-20T00:00:00Z alpha COUNCIL→PENDING_OWNER — auto-adopt path (T0), council skipped
+EOF
+cp "$record" "$tmp/t0-current.proposal"
+cp "$t0_artifact" "$tmp/t0-current.artifact"
+"$reconcile" --vault "$vault" --topic "$topic" --workspace "$workspace" --now 2026-07-21T00:00:00Z \
+  >"$tmp/t0-current.out" || fail "current-form T0 reconcile failed"
+assert_v2 1 PENDING_OWNER
+grep -q '^sgl-t0-skip/v1$' "$t0_artifact" || fail "current-form T0 evidence was not sealed"
+t0_backup=$(backup_for)
+t0_relative=${t0_backup#"$vault/"}
+"$reconcile" --vault "$vault" --topic "$topic" --restore-backup "$t0_relative" >"$tmp/t0-current.restore" || fail "current-form T0 restore failed"
+cmp -s "$record" "$tmp/t0-current.proposal" || fail "current-form T0 proposal restore differed"
+cmp -s "$t0_artifact" "$tmp/t0-current.artifact" || fail "current-form T0 artifact restore differed"
 
 echo "test-adopt-reconcile.sh: PASS"

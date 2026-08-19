@@ -26,6 +26,7 @@ def record(path)
   finish = lines[1, 200].to_a.index("---\n"); raise 'frontmatter unbounded or missing terminator' unless finish
   finish += 1; raise 'frontmatter too large' if lines[0..finish].join.bytesize > 32 * 1024
   data = YAML.load(lines[0..finish].join); raise 'frontmatter is not a mapping' unless data.is_a?(Hash)
+  OwnerConfirmation.normalize_state_on_read!(data)
   %w[state state_entered_at updated].each { |k| raise "non-literal or missing #{k} key" unless lines[1...finish].any? { |l| l.start_with?("#{k}:") } }
   [lines, finish, data]
 end
@@ -278,13 +279,13 @@ paths.each do |path|
     audits << "#{topic}: identity_critical true requires risk_tier T2" if data['identity_critical']==true && data['risk_tier'].to_s!='T2'
     audits << "#{topic}: TRIALING missing executor_agent" if original=='TRIALING' && data['executor_agent'].to_s.empty?
     if original=='ADOPTING'; miss=%w[backup_ref effect_metric report_due].select { |k| data[k].to_s.empty? }; audits << "#{topic}: ADOPTING missing #{miss.join(', ')}" unless miss.empty? end
-    audits << "#{topic}: PENDING_SHO missing reversibility" if original=='PENDING_SHO' && data['reversibility'].to_s.empty?
+    audits << "#{topic}: PENDING_OWNER missing reversibility" if original=='PENDING_OWNER' && data['reversibility'].to_s.empty?
     body.each_line.grep(/TRIALING→(?:WATCH|DLQ)/).each { |l| audits << "#{topic}: trial transition missing task token" unless l.match?(/\btask\s+\S+/) }
     # YAML parses unquoted timestamps into Time; Time#to_s is NOT ISO8601Z, so
     # preserved fields must be re-normalized or appends corrupt the record.
     iso = ->(v) { (t=ts(v)) ? t.utc.strftime('%Y-%m-%dT%H:%M:%SZ') : v.to_s }
     state=original; entered_out=iso.call(data['state_entered_at']); cooldown=data['cooldown_until'].to_s.empty? ? '' : iso.call(data['cooldown_until']); event=nil
-    rules={'PROPOSED'=>[14,'EXPIRED',(now+2592000).strftime('%Y-%m-%dT%H:%M:%SZ')], 'TRIALING'=>[7,'DLQ',cooldown], 'COUNCIL'=>[3,'DLQ',cooldown], 'PENDING_SHO'=>[30,'EXPIRED',''], 'ADOPTING'=>[7,'DLQ',cooldown]}
+    rules={'PROPOSED'=>[14,'EXPIRED',(now+2592000).strftime('%Y-%m-%dT%H:%M:%SZ')], 'TRIALING'=>[7,'DLQ',cooldown], 'COUNCIL'=>[3,'DLQ',cooldown], 'PENDING_OWNER'=>[30,'EXPIRED',''], 'ADOPTING'=>[7,'DLQ',cooldown]}
     if rules[state] && age>=rules[state][0]
       limit,target,cooldown=rules[state]; note="SLA #{limit}d exceeded (#{entered ? format('state age %.1fd',age) : 'damaged state_entered_at; treated overdue now'})"
       audits << "#{topic}: transitioned with damaged state_entered_at — verify #{original}→#{target} was warranted" unless entered
@@ -310,7 +311,7 @@ paths.each do |path|
       if due && due<now && !resolved
         days=(now-due)/86400.0; overdue << "#{topic} — effect report overdue #{format('%.1f',days)}d (due #{data['report_due']})"
         if days>=14
-          # Append the escalation event once, but keep the PENDING_SHO pin sticky
+          # Append the escalation event once, but keep the PENDING_OWNER pin sticky
           # every run until EFFECT_REPORT/SHO_WAIVER resolves it (spec §3).
           event="- #{now_s} growth-lint EFFECT_REPORT_OVERDUE — effect report overdue — escalated to Sho" unless body.match?(/\bEFFECT_REPORT_OVERDUE\b/)
           effect_pending << [topic, data['report_due'].to_s, 'effect report overdue — escalated to Sho']
@@ -321,7 +322,7 @@ paths.each do |path|
       if dry then actions << "PLAN #{topic}: #{original}→#{state}"
       else plans << [path, prepare(path,lines,stop,state,entered_out,cooldown,now.strftime('%Y-%m-%d'),event),topic,original,state,data] end
     end
-    states[state]+=1; pending << [topic,data,entered,nil,body] if state=='PENDING_SHO'; reminders << "REMINDER #{topic} — waiting #{format('%.1f',age)}d; Sho reminder" if state=='PENDING_SHO' && !event && age>=16 && age<30
+    states[state]+=1; pending << [topic,data,entered,nil,body] if state=='PENDING_OWNER'; reminders << "REMINDER #{topic} — waiting #{format('%.1f',age)}d; Sho reminder" if state=='PENDING_OWNER' && !event && age>=16 && age<30
     near << "#{topic} — #{format('%.1f',age)}d in TRIALING" if state=='TRIALING' && age>=5 && age<7
     if state=='PROPOSED'; tag=body[/Judgement\s*[:—-]?\s*\[(ADOPT-NOW|TRIAL|WATCH)\]/i,1] || '-'; (tag=='WATCH' ? watch : proposed) << [topic,tag,age,data['proposer'].to_s] end
     records << [state,data]
@@ -357,7 +358,7 @@ else
 end
 totals=(["- Total records: #{paths.length}","- DAMAGED: #{states['DAMAGED']}","- merged: #{merged}"]+states.keys.sort.reject { |k| k=='DAMAGED' }.map { |k| "- #{k}: #{states[k]}" }).join("\n")
 inventory=proposed.sort_by(&:first).map { |k,t,a,p| "- #{k} | #{t} | #{format('%.1f',a)} | #{p}" }; inventory << "- WATCH: #{watch.length} — #{watch.sort_by(&:first).map(&:first).join(', ')}" unless watch.empty?
-values={'GENERATED_AT'=>now_s,'LEDGER_DIR'=>ledger,'RUN_BANNER'=>(errors>0 ? "> **RUN ERRORS: #{errors} — damaged inputs/actions are listed below.**" : ''),'EMPTY_BANNER'=>(paths.empty? ? '> **LEDGER EMPTY — verify vault root.**' : ''),'PENDING_SHO_ROWS'=>(rows.empty? ? '- None' : rows.join("\n")),'TOTALS_BY_STATE'=>totals,'PROPOSAL_INVENTORY'=>(inventory.empty? ? '- None' : "- topic_key | recommendation | age days | proposer\n"+inventory.join("\n")),'PROTOCOL_AUDIT'=>(audits.empty? ? '- None' : audits.sort.map { |x| "- #{x}" }.join("\n")),'SENSE_BANNER'=>(broken ? '> **SENSE BROKEN — verify sensors and status logging immediately.**' : ''),'SENSE_DETAIL'=>(sense.empty? ? '- No sensor status' : sense.map { |x| "- #{x}" }.join("\n")),'PIPELINE_WARNING'=>(recent.zero? ? '> **PIPELINE QUIET — verify sensors:** zero new sightings/proposals in the last 48h.' : ''),'OVERDUE_AND_ACTIONS'=>((actions+reminders+overdue+near).empty? ? '- None' : (actions+reminders+overdue+near).map { |x| "- #{x}" }.join("\n")),'TRIALING_QUOTAS'=>(quotas.empty? ? '- None' : quotas.keys.sort.map { |k| "- #{k}: #{quotas[k]}/1#{quotas[k]>1 ? ' — VIOLATION' : ''}" }.join("\n"))}
+values={'GENERATED_AT'=>now_s,'LEDGER_DIR'=>ledger,'RUN_BANNER'=>(errors>0 ? "> **RUN ERRORS: #{errors} — damaged inputs/actions are listed below.**" : ''),'EMPTY_BANNER'=>(paths.empty? ? '> **LEDGER EMPTY — verify vault root.**' : ''),'PENDING_OWNER_ROWS'=>(rows.empty? ? '- None' : rows.join("\n")),'TOTALS_BY_STATE'=>totals,'PROPOSAL_INVENTORY'=>(inventory.empty? ? '- None' : "- topic_key | recommendation | age days | proposer\n"+inventory.join("\n")),'PROTOCOL_AUDIT'=>(audits.empty? ? '- None' : audits.sort.map { |x| "- #{x}" }.join("\n")),'SENSE_BANNER'=>(broken ? '> **SENSE BROKEN — verify sensors and status logging immediately.**' : ''),'SENSE_DETAIL'=>(sense.empty? ? '- No sensor status' : sense.map { |x| "- #{x}" }.join("\n")),'PIPELINE_WARNING'=>(recent.zero? ? '> **PIPELINE QUIET — verify sensors:** zero new sightings/proposals in the last 48h.' : ''),'OVERDUE_AND_ACTIONS'=>((actions+reminders+overdue+near).empty? ? '- None' : (actions+reminders+overdue+near).map { |x| "- #{x}" }.join("\n")),'TRIALING_QUOTAS'=>(quotas.empty? ? '- None' : quotas.keys.sort.map { |k| "- #{k}: #{quotas[k]}/1#{quotas[k]>1 ? ' — VIOLATION' : ''}" }.join("\n"))}
 out=File.read(template); values.each { |k,v| out.gsub!("{{#{k}}}",v) }
 if dry then puts out
 else

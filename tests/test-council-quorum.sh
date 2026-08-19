@@ -82,7 +82,7 @@ invoke() { "$quorum" --vault "$vault" --topic "$topic" --workspace "$workspace" 
 
 new_case row1; verdict utility GO; verdict cost GO; verdict security NO-GO; cp "$ledger/$topic.md" "$case_root/before.md"
 invoke --apply >"$case_root/out" || fail "row1 apply failed"
-grep -q '^state: PENDING_SHO$' "$ledger/$topic.md" || fail "row1 no transition"; grep -q '^sealed: true$' "$council/$task.convene.yaml" || fail "row1 no seal"
+grep -q '^state: PENDING_OWNER$' "$ledger/$topic.md" || fail "row1 no transition"; grep -q '^sealed: true$' "$council/$task.convene.yaml" || fail "row1 no seal"
 ruby -ryaml -e '
   d = YAML.load_file(ARGV[0])
   abort unless d["schema"] == "sgl-proposal/v2"
@@ -96,7 +96,7 @@ ruby -ryaml -e '
     "principal" => "",
     "verified_at" => ""
   }
-' "$ledger/$topic.md" || fail "COUNCIL→PENDING_SHO did not reset owner confirmation"
+' "$ledger/$topic.md" || fail "COUNCIL→PENDING_OWNER did not reset owner confirmation"
 
 new_case repair; verdict utility GO; verdict cost GO; verdict security GO
 cp "$ledger/$topic.md" "$case_root/pre-apply.md"
@@ -104,7 +104,7 @@ invoke --apply >"$case_root/seed.out" || fail "repair seed apply failed"
 cp "$case_root/pre-apply.md" "$ledger/$topic.md"
 invoke >"$case_root/out" || fail "repair invocation failed"
 grep -q '^REPAIRED GO$' "$case_root/out" || fail "repair not reported"
-grep -q '^state: PENDING_SHO$' "$ledger/$topic.md" || fail "repair did not transition"
+grep -q '^state: PENDING_OWNER$' "$ledger/$topic.md" || fail "repair did not transition"
 grep -q '^proposal_attempt: 1$' "$ledger/$topic.md" || fail "repair did not restore attempt identity"
 
 new_case repair_legacy_override; verdict utility GO; verdict cost GO; verdict security GO
@@ -127,7 +127,7 @@ ruby -e '
 ' "$council/$task.quorum.md"
 invoke >"$case_root/out" || fail "legacy override repair invocation failed"
 grep -q '^REPAIRED GO (Sho override of security veto)$' "$case_root/out" || fail "legacy override repair not reported"
-grep -q '^state: PENDING_SHO$' "$ledger/$topic.md" || fail "legacy override repair did not transition"
+grep -q '^state: PENDING_OWNER$' "$ledger/$topic.md" || fail "legacy override repair did not transition"
 grep -Eq "^state_entered_at: '?2026-07-20T12:00:00Z'?\$" "$ledger/$topic.md" || fail "legacy override repair did not normalize timestamp"
 grep -q '^proposal_attempt: 1$' "$ledger/$topic.md" || fail "legacy override repair did not restore attempt identity"
 
@@ -144,7 +144,7 @@ if invoke --apply >"$case_root/out" 2>"$case_root/err"; then fail "digest drift 
 grep -q DIGEST_DRIFT "$case_root/err" || fail "digest drift violation absent"; cmp -s "$case_root/before.md" "$ledger/$topic.md" || fail "digest drift changed ledger"
 
 new_case locale; verdict utility GO; verdict cost GO; verdict security GO
-LC_ALL=C invoke --apply >"$case_root/out" || fail "LC_ALL=C quorum failed"; grep -q '^state: PENDING_SHO$' "$ledger/$topic.md" || fail "locale transition failed"
+LC_ALL=C invoke --apply >"$case_root/out" || fail "LC_ALL=C quorum failed"; grep -q '^state: PENDING_OWNER$' "$ledger/$topic.md" || fail "locale transition failed"
 
 # A fresh attempt cannot reuse an occupied confirmation namespace.
 new_case attempt_namespace; verdict utility GO; verdict cost GO; verdict security GO

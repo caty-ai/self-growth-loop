@@ -115,6 +115,9 @@ module ReconcileCLI
     proposal_attempt owner_confirmation proposal-digest authorization-ref
   ].freeze
   LEGACY_T0_SENTENCE = "T0 fast path: this reversible, non-identity-critical proposal skips council review and remains subject to the Sho human gate.\n\n".freeze
+  # legacy-read: PENDING_SHO accepted until v1.0 (issue #10)
+  HISTORICAL_T0_TRANSITION = "COUNCIL→PENDING_SHO".freeze
+  CURRENT_T0_TRANSITION = "COUNCIL→PENDING_OWNER".freeze
 
   class UsageError < StandardError; end
 
@@ -209,11 +212,11 @@ module ReconcileCLI
   end
 
   def ensure_workspace_unused!
-    usage_fail("--workspace is only valid for legacy T0 PENDING_SHO reconciliation") unless inputs[:workspace].empty?
+    usage_fail("--workspace is only valid for legacy T0 PENDING_OWNER reconciliation") unless inputs[:workspace].empty?
   end
 
   def workspace_root
-    usage_fail("--workspace is required for legacy T0 PENDING_SHO reconciliation") if inputs[:workspace].empty?
+    usage_fail("--workspace is required for legacy T0 PENDING_OWNER reconciliation") if inputs[:workspace].empty?
     @workspace_root ||= OwnerConfirmation.canonicalize_root(inputs[:workspace])
   end
 
@@ -287,7 +290,7 @@ module ReconcileCLI
     state = record.fetch("state")
     OwnerConfirmation.actual_string!(state, "state", ascii: true)
     fail_closed("record-damaged", "unsupported legacy state") unless %w[
-      PROPOSED TRIALING COUNCIL PENDING_SHO ADOPTING ADOPTED EXPIRED REJECTED DLQ WATCH
+      PROPOSED TRIALING COUNCIL PENDING_OWNER ADOPTING ADOPTED EXPIRED REJECTED DLQ WATCH
     ].include?(state)
     canonical_timestamp_value!(record.fetch("state_entered_at"), "state_entered_at")
     risk_tier = record.fetch("risk_tier")
@@ -376,7 +379,7 @@ module ReconcileCLI
   def classify_legacy_state!(record)
     state = record.fetch("state")
     case state
-    when "PROPOSED", "TRIALING", "COUNCIL", "PENDING_SHO"
+    when "PROPOSED", "TRIALING", "COUNCIL", "PENDING_OWNER"
       state
     when "ADOPTING"
       fail_closed("legacy-adopting-reconcile-unsupported")
@@ -406,8 +409,14 @@ module ReconcileCLI
     payload
   end
 
-  def t0_legacy_artifact_bytes(state_entered_at)
-    LEGACY_T0_SENTENCE + "- #{canonical_timestamp_value!(state_entered_at, 'state_entered_at')} alpha COUNCIL→PENDING_SHO — auto-adopt path (T0), council skipped\n"
+  def t0_legacy_artifact_bytes(state_entered_at, transition)
+    LEGACY_T0_SENTENCE + "- #{canonical_timestamp_value!(state_entered_at, 'state_entered_at')} alpha #{transition} — auto-adopt path (T0), council skipped\n"
+  end
+
+  def t0_legacy_artifact_candidates(state_entered_at)
+    [HISTORICAL_T0_TRANSITION, CURRENT_T0_TRANSITION].map do |transition|
+      t0_legacy_artifact_bytes(state_entered_at, transition).b
+    end
   end
 
   def expected_t0_artifact_relative_path(record)
@@ -760,7 +769,7 @@ module ReconcileCLI
   def derive_attempt_from_legacy_state(state)
     case state
     when "PROPOSED", "TRIALING", "COUNCIL" then 0
-    when "PENDING_SHO" then 1
+    when "PENDING_OWNER" then 1
     else fail_closed("reconcile-backup-invalid", "legacy state is not migratable")
     end
   end
@@ -774,13 +783,13 @@ module ReconcileCLI
     require_legacy_record!(legacy_record)
     state = classify_legacy_state!(legacy_record)
     if member_map.length == 2
-      fail_closed("reconcile-backup-invalid", "two-member backup only allowed for legacy T0 PENDING_SHO") unless state == "PENDING_SHO" && legacy_record["risk_tier"] == "T0"
+      fail_closed("reconcile-backup-invalid", "two-member backup only allowed for legacy T0 PENDING_OWNER") unless state == "PENDING_OWNER" && legacy_record["risk_tier"] == "T0"
       t0_rel = expected_t0_artifact_relative_path(legacy_record)
       legacy_t0 = member_map[t0_rel]
       fail_closed("reconcile-backup-invalid", "legacy T0 member missing") unless legacy_t0
       fail_closed("reconcile-backup-invalid", "unexpected extra member") unless member_map.keys.sort == [proposal_relative_path, t0_rel].sort
-      expected_legacy_t0 = t0_legacy_artifact_bytes(legacy_record.fetch("state_entered_at"))
-      fail_closed("reconcile-backup-invalid", "legacy T0 bytes mismatch") unless legacy_t0 == expected_legacy_t0.b
+      expected_legacy_t0_candidates = t0_legacy_artifact_candidates(legacy_record.fetch("state_entered_at"))
+      fail_closed("reconcile-backup-invalid", "legacy T0 bytes mismatch") unless expected_legacy_t0_candidates.include?(legacy_t0)
       {
         legacy_record: legacy_record,
         proposal_attempt: 1,
@@ -812,7 +821,7 @@ module ReconcileCLI
     fail_closed("reconcile-scope-unsupported", "links.adoption_entry changed") unless current_record.dig("links", "adoption_entry") == ""
     topic_confirmation_directory_absent!
     if archive[:proposal_attempt] == 1 && archive[:legacy_record]["risk_tier"] == "T0"
-      usage_fail("--workspace is required for legacy T0 PENDING_SHO reconciliation") if workspace_required && inputs[:workspace].empty?
+      usage_fail("--workspace is required for legacy T0 PENDING_OWNER reconciliation") if workspace_required && inputs[:workspace].empty?
       validate_current_t0_reconciled_state!(
         archive: archive,
         current_record: current_record,
@@ -891,13 +900,13 @@ module ReconcileCLI
     state = classify_legacy_state!(record)
     legacy_migration_guards!(record)
 
-    if state == "PENDING_SHO" && record["risk_tier"] == "T0"
+    if state == "PENDING_OWNER" && record["risk_tier"] == "T0"
       migrate_legacy_t0_pending_sho!(record)
       return
     end
 
     ensure_workspace_unused!
-    attempt = (state == "PENDING_SHO" ? 1 : 0)
+    attempt = (state == "PENDING_OWNER" ? 1 : 0)
     expected_members = backup_member_map_for_current_legacy(record: record)
     backup_rel = choose_or_create_backup!(expected_members)
     bytes = build_reconciled_v2_bytes(
@@ -912,7 +921,7 @@ module ReconcileCLI
 
   def migrate_legacy_t0_pending_sho!(record)
     workspace_root
-    expected_legacy_t0 = t0_legacy_artifact_bytes(record.fetch("state_entered_at"))
+    expected_legacy_t0_candidates = t0_legacy_artifact_candidates(record.fetch("state_entered_at"))
     sealed = OwnerConfirmation.derive_t0_evidence(
       vault_root: vault_root,
       workspace_root: workspace_root,
@@ -925,7 +934,7 @@ module ReconcileCLI
       backup_rel = find_crash_recovery_backup!(
         proposal_bytes: record.source_bytes,
         t0_rel: t0_rel,
-        expected_legacy_t0: expected_legacy_t0,
+        expected_legacy_t0_candidates: expected_legacy_t0_candidates,
       )
       bytes = build_reconciled_v2_bytes(
         legacy_record: record,
@@ -937,9 +946,9 @@ module ReconcileCLI
       puts "REPAIRED #{topic_key}: completed proposal publish after T0 seal"
       return
     end
-    fail_closed("t0-evidence-conflict") unless current_t0 == expected_legacy_t0.b
+    fail_closed("t0-evidence-conflict") unless expected_legacy_t0_candidates.include?(current_t0)
 
-    expected_members = backup_member_map_for_current_legacy(record: record, t0_legacy_bytes: expected_legacy_t0)
+    expected_members = backup_member_map_for_current_legacy(record: record, t0_legacy_bytes: current_t0)
     backup_rel = choose_or_create_backup!(expected_members)
     durable_restore_regular_file!(t0_path, sealed.fetch("artifact_bytes"))
     bytes = build_reconciled_v2_bytes(
@@ -949,23 +958,25 @@ module ReconcileCLI
       event_time_iso: sampled_now_iso,
     )
     OwnerConfirmation.atomic_replace_regular_file(record.path, bytes, label: "proposal")
-    puts "RECONCILED #{topic_key}: legacy PENDING_SHO T0 -> v2"
+    puts "RECONCILED #{topic_key}: legacy PENDING_OWNER T0 -> v2"
   end
 
-  def find_crash_recovery_backup!(proposal_bytes:, t0_rel:, expected_legacy_t0:)
+  def find_crash_recovery_backup!(proposal_bytes:, t0_rel:, expected_legacy_t0_candidates:)
     candidates = scan_existing_backups!
     matches = candidates.select do |path|
-      begin
-        exact_backup_member_map!(
-          path,
-          {
-            proposal_relative_path => proposal_bytes.b,
-            t0_rel => expected_legacy_t0.b,
-          },
-        )
-        true
-      rescue OwnerConfirmation::Error
-        false
+      expected_legacy_t0_candidates.any? do |artifact_bytes|
+        begin
+          exact_backup_member_map!(
+            path,
+            {
+              proposal_relative_path => proposal_bytes.b,
+              t0_rel => artifact_bytes,
+            },
+          )
+          true
+        rescue OwnerConfirmation::Error
+          false
+        end
       end
     end
     fail_closed("reconcile-backup-conflict", "expected exactly one crash-recovery backup") unless matches.length == 1

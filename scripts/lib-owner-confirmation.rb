@@ -48,7 +48,7 @@ module OwnerConfirmation
     "PROPOSED" => %w[pending verified],
     "TRIALING" => %w[pending verified],
     "COUNCIL" => %w[pending verified],
-    "PENDING_SHO" => %w[pending],
+    "PENDING_OWNER" => %w[pending],
     "ADOPTING" => %w[verified],
     "ADOPTED" => %w[verified],
     "WATCH" => %w[verified],
@@ -156,6 +156,12 @@ module OwnerConfirmation
     parse_proposal_bytes(bytes, path: canonical)
   end
 
+  def normalize_state_on_read!(values)
+    # legacy-read: PENDING_SHO accepted until v1.0 (issue #10)
+    values["state"] = "PENDING_OWNER" if values["state"] == "PENDING_SHO"
+    values
+  end
+
   def parse_proposal_bytes(bytes, path: nil)
     text = valid_utf8_bytes!(bytes, "record-damaged", "proposal")
     fail_closed("record-damaged", "frontmatter must begin at byte zero") unless text.start_with?("---\n")
@@ -168,6 +174,7 @@ module OwnerConfirmation
     reject_yaml_duplicates!(yaml_frontmatter, "proposal")
     values = safe_yaml_load(yaml_frontmatter, "proposal")
     fail_closed("record-damaged", "proposal frontmatter is not a mapping") unless values.is_a?(Hash)
+    normalize_state_on_read!(values)
 
     legacy = values.keys == LEGACY_PROPOSAL_KEYS
     unless legacy || values.keys == PROPOSAL_KEYS
@@ -295,7 +302,7 @@ module OwnerConfirmation
   def build_next_proposal_v2(record:, expected_state: nil)
     fail_closed("record-damaged", "record must be a mapping") unless record.is_a?(Hash)
     fail_closed("record-damaged", "expected_state is required for a fresh attempt") if expected_state.nil?
-    fail_closed("record-damaged", "PENDING_SHO repair must preserve its attempt") if expected_state == "PENDING_SHO"
+    fail_closed("record-damaged", "PENDING_OWNER repair must preserve its attempt") if expected_state == "PENDING_OWNER"
     fail_closed("record-damaged", "fresh confirmation attempt expected #{expected_state}") unless record["state"] == expected_state
     previous_attempt =
       if record["schema"] == "sgl-proposal/v2"
@@ -313,7 +320,7 @@ module OwnerConfirmation
       values[key] =
         case key
         when "schema" then "sgl-proposal/v2"
-        when "state" then "PENDING_SHO"
+        when "state" then "PENDING_OWNER"
         when "proposal_attempt" then next_attempt
         when "owner_confirmation" then pending_owner_confirmation
         else deep_copy(record.fetch(key))
