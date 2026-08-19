@@ -69,7 +69,7 @@ flowchart LR
 | OS | macOS | ✅ テスト済み（標準の bash 3.2 + システムの ruby、gem不要） |
 | | Linux | ⚠️ 未テスト |
 | 単体利用 | 他に何も不要 | 台帳＋lint＋キューレポートはこのリポジトリだけで動作します |
-| 試行 | [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) のローカルチェックアウト | 試行タスクを実行するエンジン（固定バージョン: v0.2.0） |
+| 試行 | [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) のローカルチェックアウト | 試行タスクを実行するエンジン（固定バージョン: v0.6.0） |
 
 ---
 
