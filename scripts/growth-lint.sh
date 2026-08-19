@@ -2,6 +2,10 @@
 # Enforce proposal-ledger SLA transitions and render the human review queue.
 # Compatible with macOS Bash 3.2; strict parsing and UTC arithmetic use Ruby.
 set -u
+if ! command -v ruby >/dev/null 2>&1; then
+  echo "growth-lint.sh: ruby not found on PATH; install ruby to use this repo's scripts" >&2
+  exit 127
+fi
 # shellcheck disable=SC2034 # consumed by sourced shared lock helper
 ADOPT_TOOL=growth-lint.sh
 # shellcheck disable=SC1091

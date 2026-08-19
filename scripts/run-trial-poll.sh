@@ -2,6 +2,10 @@
 # Cron/launchd entrypoint for trial-poll with logging and dead-man heartbeat.
 # Compatible with macOS Bash 3.2.
 set -u
+if ! command -v ruby >/dev/null 2>&1; then
+  echo "run-trial-poll.sh: ruby not found on PATH; install ruby to use this repo's scripts" >&2
+  exit 127
+fi
 
 PATH=/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin
 export PATH
