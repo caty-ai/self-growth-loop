@@ -107,7 +107,7 @@ cat /tmp/sgl-demo-vault/25_review-pending/self-growth-queue.md
 # ~/claude-workspace/caty-agent-harness คือ default lookup path (SGL_ENGINE_SOURCE)
 git clone https://github.com/caty-ai/caty-agent-harness.git ~/claude-workspace/caty-agent-harness
 cd self-growth-loop
-bash tests/run.sh          # 15 ชุดทดสอบ; engine integration test จะขับเคลื่อน engine ตัวจริง
+make test                  # ชุดทดสอบทั้งหมด; engine integration test จะขับเคลื่อน engine ตัวจริง
 ```
 
 ชี้ `SGL_ENGINE_SOURCE` ไปยังโคลนของ engine คุณ ถ้ามันอยู่ที่อื่น
@@ -145,7 +145,7 @@ bash tests/run.sh          # 15 ชุดทดสอบ; engine integration tes
 | ตัวดำเนินการนำไปใช้ (คิวอนุมัติ, บันทึกการย้อนกลับ) | ✅ พัฒนาแล้ว | `scripts/adopt-*.sh`, [docs/adoption-wiring.md](docs/adoption-wiring.md) (#11, #16) |
 | การแยกไลบรารีร่วม | ⏳ เลื่อนออกไป | ตั้งใจรอปลั๊กอินตัวที่สอง (ดูนโยบายการแยกใน plugin-convention ของ engine) |
 
-ทุกแถวที่ ✅ มาพร้อมชุดทดสอบ — `tests/` มีชุดทดสอบ 15 ชุด รวมถึง engine integration test ที่ขับเคลื่อน engine ตัวจริงที่แท็กเวอร์ชันที่ปักหมุดไว้
+ทุกแถวที่ ✅ มาพร้อมชุดทดสอบ — รันด้วย `make test`; ชุดทดสอบรวมถึง engine integration test ที่ขับเคลื่อน engine ตัวจริงที่แท็กเวอร์ชันที่ปักหมุดไว้
 
 ---
 
