@@ -258,7 +258,8 @@ cmp -s "$record" "$tmp/expired.before" || fail "expired artifact changed proposa
 # A downstream target-state change is not an idempotent retry.
 vault="$tmp/go/vault"; topic=go__tool; record="$vault/45_ai-systems/self-growth/proposals/$topic.md"
 reference=$(ruby -ryaml -e 'print (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])).dig("owner_confirmation","reference")' "$record")
-sed -i '' 's/^state: ADOPTING$/state: ADOPTED/' "$record"
+sed -i.bak 's/^state: ADOPTING$/state: ADOPTED/' "$record" && rm -f "$record.bak"
+grep -q '^state: ADOPTED$' "$record" || fail "target-state mutation did not land"
 cp "$record" "$tmp/target.before"
 if "$approve" --vault "$vault" --topic "$topic" --authorization-ref "$reference" \
   --backup-ref "backup; literal=1" --effect-metric "latency p95 -20%" --report-due "$report_due" \
@@ -267,7 +268,7 @@ if "$approve" --vault "$vault" --topic "$topic" --authorization-ref "$reference"
 fi
 grep -q 'authorization-target-state-changed' "$tmp/target.err" || fail "target-state token missing"
 cmp -s "$record" "$tmp/target.before" || fail "target-state refusal changed proposal"
-sed -i '' 's/^state: ADOPTED$/state: ADOPTING/' "$record"
+sed -i.bak 's/^state: ADOPTED$/state: ADOPTING/' "$record" && rm -f "$record.bak"
 
 # Closed parent-shell parsing rejects duplicates, irrelevant flags, and missing
 # decision inputs before any lock/write work.

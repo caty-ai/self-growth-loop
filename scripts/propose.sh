@@ -33,7 +33,7 @@ reject_control_chars() {
 
 utc_timestamp() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
 utc_date() { date -u '+%Y-%m-%d'; }
-file_mtime() { stat -f '%m' "$1" 2>/dev/null || stat -c '%Y' "$1" 2>/dev/null; }
+file_mtime() { ruby -e 'print File.mtime(ARGV.fetch(0)).to_i' "$1"; }
 
 yaml_check() { ruby -ryaml -e 'YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])' "$1" >/dev/null 2>&1; }
 

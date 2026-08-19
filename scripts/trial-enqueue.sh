@@ -23,7 +23,7 @@ EOF
 fail() { echo "trial-enqueue.sh: $*" >&2; exit 2; }
 policy_fail() { echo "trial-enqueue.sh: $*" >&2; exit 3; }
 utc_timestamp() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
-file_mtime() { stat -f '%m' "$1" 2>/dev/null || stat -c '%Y' "$1" 2>/dev/null; }
+file_mtime() { ruby -e 'print File.mtime(ARGV.fetch(0)).to_i' "$1"; }
 yaml_check() { ruby -ryaml -rdate -rtime -e '
   path = ARGV.fetch(0)
   abort "YAML too large" if File.size(path) > 1_048_576

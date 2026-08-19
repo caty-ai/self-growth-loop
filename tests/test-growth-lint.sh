@@ -150,7 +150,7 @@ call_propose exact__community 'Exact boundary'; exact="$l2/exact__community.md"
 set_field "$exact" state_entered_at 2026-07-18T00:00:00Z
 call_propose bad__community 'Bad spelling'; bad="$l2/bad__community.md"
 set_field "$bad" state_entered_at 2026-07-01T00:00:00Z
-sed -i '' 's/^state: /"state": /' "$bad"
+sed -i.bak 's/^state: /"state": /' "$bad" && rm -f "$bad.bak"
 call_propose utf__community 'UTF bad'; utf="$l2/utf__community.md"
 printf '\377' >> "$utf"
 form_mismatch="$l2/form-mismatch__community.md"
@@ -202,7 +202,7 @@ chmod 600 "$exact"
 mkdir -p "$v2/45_ai-systems/self-growth"; printf '%s\n' '2026-08-01T00:00:00Z mine OK ok' > "$v2/45_ai-systems/self-growth/sense-status.log"
 "$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >/dev/null || fail 'hardening lint failed'
 assert_contains "$(state_of "$exact")" EXPIRED
-[ "$(stat -f '%Lp' "$exact")" = 600 ] || fail 'rewritten record mode not preserved'
+[ "$(ruby -e 'printf "%o", File.stat(ARGV.fetch(0)).mode & 0777' "$exact")" = 600 ] || fail 'rewritten record mode not preserved'
 [ "$(state_of "$form_mismatch")" = PENDING_OWNER ] || fail 'invalid v2 state/form record mutated before damage classification'
 ! grep -Fq 'growth-lint PENDING_OWNER→EXPIRED' "$form_mismatch" || fail 'invalid v2 state/form record appended an SLA transition'
 q2="$v2/25_review-pending/self-growth-queue.md"
@@ -429,7 +429,8 @@ Observation.
 EOF
 "$lint" --vault "$authv" --now 2026-08-01T00:00:00Z >/dev/null || fail 'missing artifact lint failed'
 grep -Fq "$missing_topic: authorization-artifact-missing" "$authq" || fail 'missing artifact status token missing'
-sed -i '' 's/- Principal: sho/- Principal: other/' "$authv/30_decisions/missing-adoption.md"
+sed -i.bak 's/- Principal: sho/- Principal: other/' "$authv/30_decisions/missing-adoption.md" &&
+  rm -f "$authv/30_decisions/missing-adoption.md.bak"
 "$lint" --vault "$authv" --now 2026-08-01T00:00:00Z >/dev/null || fail 'damaged owner block lint failed'
 grep -Fq "$missing_topic: damaged adoption correlation" "$authq" || fail 'damaged owner block was not classified damaged'
 
