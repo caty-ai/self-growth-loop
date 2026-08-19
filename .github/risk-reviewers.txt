@@ -1,0 +1,3 @@
+# Risk reviewers roster (handbook templates/ci README step 2).
+# Humans only — the risk-reviewed label is valid only when applied by an ID on this list.
+shojikumaru
