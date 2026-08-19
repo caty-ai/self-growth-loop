@@ -81,7 +81,7 @@ One proposal's life: a feed item ("tool X looks useful") becomes a ledger record
 
 Paste this to your coding agent (Claude Code, Codex, etc.):
 
-> Clone https://github.com/caty-ai/self-growth-loop and run `bash tests/run.sh`. Then show me how to create a demo proposal with scripts/propose.sh against a temporary vault directory.
+> Clone https://github.com/caty-ai/self-growth-loop and run `make test`. Then show me how to create a demo proposal with scripts/propose.sh against a temporary vault directory.
 
 ### Or do it yourself
 
@@ -149,6 +149,15 @@ Not for you if: you want a fully-automatic self-improving agent with no human in
 | Shared-library extraction | ⏳ deferred | deliberately waits for a second plugin (see extraction policy in the engine's plugin-convention) |
 
 Every ✅ row ships with tests — run them with `make test`; the suite includes an engine integration test that drives the real engine at its pinned tag.
+
+---
+
+## Project status
+
+- **CI:** Not yet. The shared test-and-lint caller arrives with [#16](https://github.com/caty-ai/self-growth-loop/issues/16) (B6), gated on [family-dev-handbook#80](https://github.com/caty-ai/family-dev-handbook/issues/80); until then, the header badge stays grey and `make test` is the local gate.
+- **Verified environments:** macOS (bash 3.2+, system ruby); the full suite passes locally. No other OS has been verified.
+- **Maturity:** **reference** — campaign-designated for this repository; formal publication-gate wiring lands with [#12](https://github.com/caty-ai/self-growth-loop/issues/12) (B9).
+- **Known constraints:** There is no CI yet; tests are verified only on macOS; ruby is required (entry scripts exit 127 without it); engine integration is pinned to [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0).
 
 ---
 

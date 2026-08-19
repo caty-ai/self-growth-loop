@@ -81,7 +81,7 @@ flowchart LR
 
 把下面这段话粘贴给你的编程 agent（Claude Code、Codex 等）：
 
-> 克隆 https://github.com/caty-ai/self-growth-loop 并运行 `bash tests/run.sh`。然后告诉我如何用 scripts/propose.sh 在一个临时的 vault 目录下创建一个演示提案。
+> 克隆 https://github.com/caty-ai/self-growth-loop 并运行 `make test`。然后告诉我如何用 scripts/propose.sh 在一个临时的 vault 目录下创建一个演示提案。
 
 ### 或者自己动手
 
@@ -149,6 +149,15 @@ make test                  # 完整测试套件；其中的引擎集成测试会
 | 共享库抽取 | ⏳ 延后 | 刻意等待第二个插件出现后再做（参见引擎 plugin-convention 中的抽取策略） |
 
 每一行标记为 ✅ 的功能都配有测试——使用 `make test` 运行；测试套件中包括一个会驱动真实引擎（锁定版本）运行的引擎集成测试。
+
+---
+
+## 项目状态
+
+- **CI:** 尚未配置。共享的 test/lint caller 将在 [#16](https://github.com/caty-ai/self-growth-loop/issues/16)（B6）中加入，并受 [family-dev-handbook#80](https://github.com/caty-ai/family-dev-handbook/issues/80) 阻塞；在此之前，页首徽章保持灰色，`make test` 是本地准入门槛。
+- **已验证环境:** macOS（bash 3.2+、系统自带的 ruby）；完整测试套件已在本地通过。其他操作系统尚未验证。
+- **成熟度:** **reference** — 这是本仓库的活动指定级别；正式的发布门禁接线将在 [#12](https://github.com/caty-ai/self-growth-loop/issues/12)（B9）中落地。
+- **已知限制:** 目前没有 CI；测试仅在 macOS 上验证；ruby 是必需依赖（缺少时入口脚本会以 127 退出）；引擎集成锁定到 [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0)。
 
 ---
 
