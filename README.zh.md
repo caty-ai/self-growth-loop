@@ -107,7 +107,7 @@ cat /tmp/sgl-demo-vault/25_review-pending/self-growth-queue.md
 # ~/claude-workspace/caty-agent-harness 是默认的查找路径（SGL_ENGINE_SOURCE）
 git clone https://github.com/caty-ai/caty-agent-harness.git ~/claude-workspace/caty-agent-harness
 cd self-growth-loop
-bash tests/run.sh          # 15 个测试套件；其中的引擎集成测试会驱动真实引擎
+make test                  # 完整测试套件；其中的引擎集成测试会驱动真实引擎
 ```
 
 如果你的引擎检出位置不同，请通过 `SGL_ENGINE_SOURCE` 指向它。
@@ -145,7 +145,7 @@ bash tests/run.sh          # 15 个测试套件；其中的引擎集成测试会
 | 采纳执行器（审批队列、回滚记录） | ✅ 已实现 | `scripts/adopt-*.sh`、[docs/adoption-wiring.md](docs/adoption-wiring.md)（#11、#16） |
 | 共享库抽取 | ⏳ 延后 | 刻意等待第二个插件出现后再做（参见引擎 plugin-convention 中的抽取策略） |
 
-每一行标记为 ✅ 的功能都配有测试——`tests/` 目录下共有 15 个测试套件，其中包括一个会驱动真实引擎（锁定版本）运行的引擎集成测试。
+每一行标记为 ✅ 的功能都配有测试——使用 `make test` 运行；测试套件中包括一个会驱动真实引擎（锁定版本）运行的引擎集成测试。
 
 ---
 

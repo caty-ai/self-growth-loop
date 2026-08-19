@@ -107,7 +107,7 @@ You just ran the loop's bookkeeping end to end: a proposal record was created, l
 # ~/claude-workspace/caty-agent-harness is the default lookup path (SGL_ENGINE_SOURCE)
 git clone https://github.com/caty-ai/caty-agent-harness.git ~/claude-workspace/caty-agent-harness
 cd self-growth-loop
-bash tests/run.sh          # 15 suites; the engine integration test drives the real engine
+make test                  # full suite; the engine integration test drives the real engine
 ```
 
 Point `SGL_ENGINE_SOURCE` at your engine checkout if it lives somewhere else.
@@ -145,7 +145,7 @@ Not for you if: you want a fully-automatic self-improving agent with no human in
 | Adoption executor (approval queue, rollback records) | ✅ implemented | `scripts/adopt-*.sh`, [docs/adoption-wiring.md](docs/adoption-wiring.md) (#11, #16) |
 | Shared-library extraction | ⏳ deferred | deliberately waits for a second plugin (see extraction policy in the engine's plugin-convention) |
 
-Every ✅ row ships with tests — `tests/` holds 15 suites, including an engine integration test that drives the real engine at its pinned tag.
+Every ✅ row ships with tests — run them with `make test`; the suite includes an engine integration test that drives the real engine at its pinned tag.
 
 ---
 
