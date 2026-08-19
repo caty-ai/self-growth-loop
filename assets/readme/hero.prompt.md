@@ -1,4 +1,4 @@
-# hero.png generation prompt (pending owner GO — image not yet generated)
+# hero.png generation prompt (generated 2026-08-19 — this file remains the regeneration prompt)
 
 Target: `assets/readme/hero.png`, referenced from the README header once generated.
 Visual contract: the family's shared ecosystem-map spec (each repo highlights its own node).
