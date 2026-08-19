@@ -123,7 +123,7 @@ grep -q -- "- Parent task: $prior" "$packet" || fail "packet parent missing"
 grep -q -- '- Retry: 1 of 2' "$packet" || fail "packet retry count missing"
 grep -q '## Retry plan' "$packet" || fail "packet retry plan missing"
 grep -q "council/$topic/$prior.retry-plan.md" "$packet" || fail "packet provenance missing"
-ruby -ryaml -e 'd=YAML.load_file(ARGV[0]); abort unless d["state"] == "TRIALING" && d["retry_count"] == 1' "$ledger/$topic.md" || fail "retry transition wrong"
+ruby -ryaml -e 'd=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]); abort unless d["state"] == "TRIALING" && d["retry_count"] == 1' "$ledger/$topic.md" || fail "retry transition wrong"
 grep -q "(retry 1/2, parent $prior)" "$ledger/$topic.md" || fail "retry event missing"
 
 new_case limit
@@ -179,7 +179,7 @@ exit 1
 EOF
 chmod +x "$engine/scripts/tr-enqueue"
 if invoke >"$case_root/out" 2>"$case_root/err"; then fail "failed engine accepted"; fi
-ruby -ryaml -e 'd=YAML.load_file(ARGV[0]); abort unless d["state"] == "COUNCIL" && d["retry_count"] == 0' "$ledger/$topic.md" || fail "engine failure did not revert retry state"
+ruby -ryaml -e 'd=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]); abort unless d["state"] == "COUNCIL" && d["retry_count"] == 0' "$ledger/$topic.md" || fail "engine failure did not revert retry state"
 grep -q 'TRIALING→COUNCIL — compensating transition' "$ledger/$topic.md" || fail "missing retry compensating event"
 
 echo "test-council-retry.sh: PASS"

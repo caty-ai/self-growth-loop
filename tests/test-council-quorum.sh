@@ -84,7 +84,7 @@ new_case row1; verdict utility GO; verdict cost GO; verdict security NO-GO; cp "
 invoke --apply >"$case_root/out" || fail "row1 apply failed"
 grep -q '^state: PENDING_OWNER$' "$ledger/$topic.md" || fail "row1 no transition"; grep -q '^sealed: true$' "$council/$task.convene.yaml" || fail "row1 no seal"
 ruby -ryaml -e '
-  d = YAML.load_file(ARGV[0])
+  d = YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])
   abort unless d["schema"] == "sgl-proposal/v2"
   abort unless d["proposal_attempt"] == 1
   abort unless d["owner_confirmation"] == {
@@ -113,7 +113,7 @@ invoke --apply >"$case_root/seed.out" || fail "legacy override seed apply failed
 cp "$case_root/pre-apply.md" "$ledger/$topic.md"
 ruby -ryaml -e '
   path = ARGV[0]
-  manifest = YAML.load_file(path)
+  manifest = YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(path) : YAML.load_file(path)
   manifest["decision"] = "GO (Sho override of security veto)"
   manifest["decision_at"] = Time.utc(2026, 7, 20, 12, 0, 0)
   File.write(path, YAML.dump(manifest))

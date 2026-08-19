@@ -123,12 +123,12 @@ grep -q MANIFEST_SKIPPED "$council/$sibling.violations.md" || fail "damaged sibl
 # sibling that would otherwise look like the active round.
 new_case semantic_sibling; body "$case_root/go.md" GO
 sibling=sgl-trial-tool__vendor-20260719t120000; cp "$council/$task.convene.yaml" "$council/$sibling.convene.yaml"
-ruby -ryaml -e 'p=ARGV[0]; d=YAML.load_file(p); d["task_id"]="wrong"; File.write(p, YAML.dump(d))' "$council/$sibling.convene.yaml"
+ruby -ryaml -e 'p=ARGV[0]; d=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(p) : YAML.load_file(p); d["task_id"]="wrong"; File.write(p, YAML.dump(d))' "$council/$sibling.convene.yaml"
 invoke utility "$case_root/go.md" >"$case_root/out" 2>"$case_root/err" || fail "semantic sibling blocked selected manifest"
 grep -q 'MANIFEST_SKIPPED.*task_id does not equal filename' "$case_root/err" || fail "semantic sibling warning absent"
 new_case string_sealed; body "$case_root/go.md" GO
 sibling=sgl-trial-tool__vendor-20260719t120000; cp "$council/$task.convene.yaml" "$council/$sibling.convene.yaml"
-ruby -ryaml -e 'p, id=ARGV; d=YAML.load_file(p); d["task_id"]=id; d["sealed"]="false"; File.write(p, YAML.dump(d))' "$council/$sibling.convene.yaml" "$sibling"
+ruby -ryaml -e 'p, id=ARGV; d=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(p) : YAML.load_file(p); d["task_id"]=id; d["sealed"]="false"; File.write(p, YAML.dump(d))' "$council/$sibling.convene.yaml" "$sibling"
 invoke utility "$case_root/go.md" >"$case_root/out" 2>"$case_root/err" || fail "string sealed sibling blocked selected manifest"
 grep -q 'MANIFEST_SKIPPED.*sealed must be boolean' "$case_root/err" || fail "string sealed warning absent"
 
@@ -138,7 +138,7 @@ sibling=sgl-trial-tool__vendor-20260721t120000
 cp "$council/$task.convene.yaml" "$council/$sibling.convene.yaml"
 ruby -ryaml -e '
   ARGV.take(2).each_with_index do |path, index|
-    data = YAML.load_file(path)
+    data = YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(path) : YAML.load_file(path)
     data["task_id"] = ARGV[2] if index == 1
     data["sealed"] = true
     data["decision_at"] = index.zero? ? "2026-07-20T12:00:00Z" : "2026-07-21T12:00:00Z"
@@ -158,7 +158,7 @@ cmp -s "$case_root/ledger.before" "$ledger/$topic.md" || fail "late delivery cha
 # A sealed round is attributable only with a valid, non-future decision time.
 for bad_time in missing invalid future; do
   new_case "sealed_$bad_time"; body "$case_root/go.md" GO
-  ruby -ryaml -e 'p, kind = ARGV; d=YAML.load_file(p); d["sealed"]=true; d["decision_at"] = {"invalid" => "nope", "future" => "2026-07-22T12:00:01Z"}[kind]; d.delete("decision_at") if kind == "missing"; File.write(p, YAML.dump(d))' "$council/$task.convene.yaml" "$bad_time"
+  ruby -ryaml -e 'p, kind = ARGV; d=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(p) : YAML.load_file(p); d["sealed"]=true; d["decision_at"] = {"invalid" => "nope", "future" => "2026-07-22T12:00:01Z"}[kind]; d.delete("decision_at") if kind == "missing"; File.write(p, YAML.dump(d))' "$council/$task.convene.yaml" "$bad_time"
   if invoke utility "$case_root/go.md" >"$case_root/out" 2>"$case_root/err"; then fail "sealed $bad_time accepted"; fi
   grep -q MANIFEST_SKIPPED "$case_root/err" || fail "sealed $bad_time skip absent"
   grep -q 'no sealed manifest has an attributable decision_at' "$case_root/err" || fail "sealed $bad_time failure absent"
@@ -167,23 +167,23 @@ done
 # Equal decision times use task id as a deterministic tiebreaker.
 new_case sealed_tie; body "$case_root/go.md" GO
 sibling=sgl-trial-tool__vendor-20260721t120000; cp "$council/$task.convene.yaml" "$council/$sibling.convene.yaml"
-ruby -ryaml -e 'ARGV.take(2).each_with_index{|p,i| d=YAML.load_file(p); d["task_id"]=ARGV[2] if i==1; d["sealed"]=true; d["decision_at"]="2026-07-21T00:00:00Z"; File.write(p,YAML.dump(d))}' "$council/$task.convene.yaml" "$council/$sibling.convene.yaml" "$sibling"
+ruby -ryaml -e 'ARGV.take(2).each_with_index{|p,i| d=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(p) : YAML.load_file(p); d["task_id"]=ARGV[2] if i==1; d["sealed"]=true; d["decision_at"]="2026-07-21T00:00:00Z"; File.write(p,YAML.dump(d))}' "$council/$task.convene.yaml" "$council/$sibling.convene.yaml" "$sibling"
 if invoke utility "$case_root/go.md" >"$case_root/out" 2>"$case_root/err"; then fail "sealed tie accepted"; fi
 grep -q "attributed=latest-sealed task_id=$sibling" "$case_root/err" || fail "sealed tie did not use task id tiebreak"
 
 # Selection failures still surface damage collected during enumeration.
 new_case all_damaged; body "$case_root/go.md" GO
-ruby -ryaml -e 'p=ARGV[0]; d=YAML.load_file(p); d.delete("sealed"); File.write(p,YAML.dump(d))' "$council/$task.convene.yaml"
+ruby -ryaml -e 'p=ARGV[0]; d=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(p) : YAML.load_file(p); d.delete("sealed"); File.write(p,YAML.dump(d))' "$council/$task.convene.yaml"
 if invoke utility "$case_root/go.md" >"$case_root/out" 2>"$case_root/err"; then fail "all damaged accepted"; fi
 grep -q 'MANIFEST_SKIPPED.*sealed must be boolean' "$case_root/err" || fail "all damaged skip absent"
 new_case damaged_ambiguous; body "$case_root/go.md" GO
-sibling=sgl-trial-tool__vendor-20260719t120000; cp "$council/$task.convene.yaml" "$council/$sibling.convene.yaml"; ruby -ryaml -e 'p, id=ARGV; d=YAML.load_file(p); d["task_id"]=id; File.write(p,YAML.dump(d))' "$council/$sibling.convene.yaml" "$sibling"; printf 'not: [yaml\n' >"$council/sgl-trial-tool__vendor-20260718t120000.convene.yaml"
+sibling=sgl-trial-tool__vendor-20260719t120000; cp "$council/$task.convene.yaml" "$council/$sibling.convene.yaml"; ruby -ryaml -e 'p, id=ARGV; d=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(p) : YAML.load_file(p); d["task_id"]=id; File.write(p,YAML.dump(d))' "$council/$sibling.convene.yaml" "$sibling"; printf 'not: [yaml\n' >"$council/sgl-trial-tool__vendor-20260718t120000.convene.yaml"
 if invoke utility "$case_root/go.md" >"$case_root/out" 2>"$case_root/err"; then fail "ambiguous rounds accepted"; fi
 grep -q MANIFEST_SKIPPED "$case_root/err" || fail "ambiguous damage skip absent"
 
 # F1: an in-file traversal must never escape the council topic directory.
 new_case traversal; body "$case_root/go.md" GO
-ruby -ryaml -e 'p=ARGV[0]; d=YAML.load_file(p); d["task_id"]="../../pwn"; File.write(p, YAML.dump(d))' "$council/$task.convene.yaml"
+ruby -ryaml -e 'p=ARGV[0]; d=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(p) : YAML.load_file(p); d["task_id"]="../../pwn"; File.write(p, YAML.dump(d))' "$council/$task.convene.yaml"
 refuse traversal MANIFEST_INVALID utility "$case_root/go.md" --task-id "$task"
 [ ! -e "$case_root/pwn.violations.md" ] || fail "traversal wrote outside topic"
 

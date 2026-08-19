@@ -79,13 +79,13 @@ poll_status=$?
 set -e
 [ "$poll_status" -ne 0 ] || fail "poll accepted damaged terminal evidence"
 
-ruby -ryaml -e 'abort unless YAML.load_file(ARGV[0])["state"] == "COUNCIL"' \
+ruby -ryaml -e 'abort unless (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["state"] == "COUNCIL"' \
   "$ledger/delivered__vendor.md" || fail "delivered task did not advance to COUNCIL"
-ruby -ryaml -e 'abort unless YAML.load_file(ARGV[0])["state"] == "DLQ"' \
+ruby -ryaml -e 'abort unless (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["state"] == "DLQ"' \
   "$ledger/dlq__vendor.md" || fail "dlq task did not advance to DLQ"
-ruby -ryaml -e 'abort unless YAML.load_file(ARGV[0])["state"] == "TRIALING"' \
+ruby -ryaml -e 'abort unless (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["state"] == "TRIALING"' \
   "$ledger/waiting__vendor.md" || fail "unmatched task changed state"
-ruby -ryaml -e 'abort unless YAML.load_file(ARGV[0])["state"] == "TRIALING"' \
+ruby -ryaml -e 'abort unless (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["state"] == "TRIALING"' \
   "$ledger/damaged__vendor.md" || fail "damaged terminal evidence changed state"
 
 grep -q "TRIALING→COUNCIL — task $delivered_id delivered; trial bundle at" \
@@ -96,7 +96,7 @@ grep -q "TRIALING→DLQ — task $dlq_id abandoned to engine DLQ" \
 grep -q "DAMAGED_EVIDENCE damaged__vendor: missing artifact state.json" "$tmp/poll.err" \
   || fail "missing damaged-evidence diagnostic"
 
-ruby -ryaml -e 'ARGV.each { |path| abort unless YAML.load_file(path).is_a?(Hash) }' \
+ruby -ryaml -e 'ARGV.each { |path| abort unless (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(path) : YAML.load_file(path)).is_a?(Hash) }' \
   "$ledger/delivered__vendor.md" "$ledger/dlq__vendor.md" "$ledger/waiting__vendor.md" "$ledger/damaged__vendor.md" \
   || fail "poll produced invalid YAML"
 

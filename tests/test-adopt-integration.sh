@@ -124,7 +124,7 @@ consume_command=$(sed -n 's/^Consume command: //p' "$tmp/issue.out" | tail -n 1 
 [ -n "$consume_command" ] || fail "executable consume command missing"
 eval "$consume_command" >/dev/null || fail "rendered consume command failed"
 ruby -ryaml -e '
-  d=YAML.load_file(ARGV[0])
+  d=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])
   abort unless d["state"]=="ADOPTING"
   abort unless d["backup_ref"]==ARGV[1] && d["effect_metric"]==ARGV[2] && d["report_due"]==ARGV[3]
   abort unless d.dig("owner_confirmation","decision")=="GO"
@@ -137,7 +137,7 @@ printf smoke >"$tmp/smoke"
 bash "$root/scripts/adopt-complete.sh" --vault "$vault" --topic "$topic" \
   --smoke-result "$tmp/smoke" --now 2026-08-10T00:00:00Z >/dev/null || fail "complete after window failed"
 ruby -ryaml -e '
-  d=YAML.load_file(ARGV[0])
+  d=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])
   abort unless d["state"]=="ADOPTED" && !d.dig("links","adoption_entry").to_s.empty?
   abort unless d.dig("owner_confirmation","status")=="verified"
 ' "$ledger/$topic.md" || fail "adoption fields missing"

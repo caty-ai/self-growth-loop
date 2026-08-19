@@ -181,7 +181,7 @@ write_record "$case_ledger/tool__vendor.md" tool__vendor PROPOSED '' T2 true
 run_policy_refusal "$tmp/identity-t2"
 grep -q 'requires --sho-approved' "$tmp/identity-t2.err" || fail "missing identity-critical approval message"
 invoke_enqueue --sho-approved >"$tmp/identity-t2-approved.out" || fail "approved identity-critical enqueue failed"
-ruby -ryaml -e 'abort unless YAML.load_file(ARGV[0])["risk_tier"] == "T2"' \
+ruby -ryaml -e 'abort unless (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["risk_tier"] == "T2"' \
   "$case_ledger/tool__vendor.md" || fail "identity-critical trial lost T2 tier"
 identity_packet=$(find "$case_vault/45_ai-systems/self-growth/trial-packets" -type f -name '*.md')
 grep -q 'T2: collection-controls prerequisite closed' "$identity_packet" || fail "identity-critical packet lacks T2 isolation"
@@ -215,9 +215,9 @@ packet="$case_vault/45_ai-systems/self-growth/trial-packets/$task_id.md"
 [ -s "$task" ] || fail "engine task was not enqueued"
 [ -s "$packet" ] || fail "trial packet was not installed"
 grep -Eq '\{\{[A-Z0-9_]+\}\}' "$task" "$packet" && fail "rendered output contains unresolved placeholders"
-ruby -ryaml -e 'data = YAML.load_file(ARGV[0]); abort unless data.is_a?(Hash)' "$record" || fail "updated record is not valid YAML"
+ruby -ryaml -e 'data = YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]); abort unless data.is_a?(Hash)' "$record" || fail "updated record is not valid YAML"
 ruby -ryaml -e '
-  data = YAML.load_file(ARGV[0])
+  data = YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])
   abort unless data["state"] == "TRIALING"
   abort unless data["executor_agent"] == "alpha"
   abort unless data["executor_model"] == "test-model"
@@ -243,7 +243,7 @@ fi
 grep -q '^state: PROPOSED$' "$case_ledger/tool__vendor.md" || fail "failed engine enqueue did not revert state"
 grep -q 'TRIALING→PROPOSED — compensating transition' "$case_ledger/tool__vendor.md" || fail "failed engine enqueue lacks compensating event"
 ruby -ryaml -e '
-  data = YAML.load_file(ARGV[0])
+  data = YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])
   abort unless data["state_entered_at"].to_s == "2026-07-20 00:00:00 UTC"
   abort unless data.dig("links", "trial_bundle") == ""
 ' "$case_ledger/tool__vendor.md" || fail "failed engine enqueue did not restore pre-transition metadata"

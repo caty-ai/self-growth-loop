@@ -142,7 +142,7 @@ DRY_RUN="$dry_run" LEDGER="$ledger_dir" WORKSPACE="$workspace" NOW="$timestamp" 
     finish = lines[1, 200].to_a.index("---\n")
     raise "frontmatter unbounded or missing terminator" unless finish
     finish += 1
-    data = YAML.load(lines[0..finish].join)
+    data = YAML.respond_to?(:unsafe_load) ? YAML.unsafe_load(lines[0..finish].join) : YAML.load(lines[0..finish].join)
     raise "frontmatter is not a mapping" unless data.is_a?(Hash)
     [lines, finish, data]
   end
@@ -212,7 +212,7 @@ DRY_RUN="$dry_run" LEDGER="$ledger_dir" WORKSPACE="$workspace" NOW="$timestamp" 
     mode = File.stat(path).mode & 07777
     File.open(temp, "w", mode) { |file| file.write(output.join); file.flush; file.fsync }
     File.chmod(mode, temp)
-    parsed = YAML.load_file(temp)
+    parsed = YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(temp) : YAML.load_file(temp)
     raise "semantic postcondition failed for state" unless parsed["state"].to_s == target
     entered = parsed["state_entered_at"]
     entered = entered.iso8601 if entered.respond_to?(:iso8601)

@@ -89,7 +89,7 @@ cdir="$case_vault/45_ai-systems/self-growth/council/$topic"
 [ "$(find "$cdir" -type f | wc -l | tr -d ' ')" -eq 4 ] || fail "expected manifest plus three briefs"
 manifest="$cdir/$task.convene.yaml"
 ruby -ryaml -rdigest -e '
- m=YAML.load_file(ARGV.shift); abort unless m["schema"]=="sgl-council-convene/v1" && m["seats"].size==3
+ p=ARGV.shift; m=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(p) : YAML.load_file(p); abort unless m["schema"]=="sgl-council-convene/v1" && m["seats"].size==3
  abort unless m["seats"].map{|s|s["evaluator_family"]}.uniq.size==3
  abort unless m["seats"].all?{|s|s["deadline"]=="2026-07-22T12:00:00Z"}; abort unless m["digests"]["bundle"].size==8 && m["digests"]["packet"]
  m["digests"]["bundle"].each{|n,d| abort unless Digest::SHA256.file(File.join(ARGV[1],n)).hexdigest==d}; abort unless Digest::SHA256.file(ARGV[2]).hexdigest==m["digests"]["packet"]
@@ -169,7 +169,7 @@ cp "$t0_artifact" "$tmp/t0.sealed"
 printf 'post-seal workspace drift\n' >"$case_workspace/loop/artifacts/$task/out/bundle/run.log"
 cmp -s "$t0_artifact" "$tmp/t0.sealed" || fail "live workspace drift changed sealed T0 evidence"
 ruby -ryaml -e '
-  d = YAML.load_file(ARGV[0])
+  d = YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])
   abort unless d["schema"] == "sgl-proposal/v2"
   abort unless d["proposal_attempt"] == 1
   abort unless d["owner_confirmation"] == {
@@ -264,14 +264,14 @@ new_case fallback; topic=fallback__vendor; write_record "$topic" T1 false fugu-1
 invoke "$topic" || fail "fallback setup failed"
 later=2026-07-22T13:00:00Z
 invoke "$topic" "$later" --fallback utility=kimi-k3 || fail "unused-family fallback failed"
-ruby -ryaml -e 'm=YAML.load_file(ARGV[0]); abort unless m["seats"].find{|s|s["seat"]=="utility-a1"}["status"]=="timed_out"; abort unless m["seats"].any?{|s|s["seat"]=="utility-a2" && s["evaluator_family"]=="kimi"}' "$case_vault/45_ai-systems/self-growth/council/$topic/$task.convene.yaml" || fail "fallback manifest wrong"
+ruby -ryaml -e 'm=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]); abort unless m["seats"].find{|s|s["seat"]=="utility-a1"}["status"]=="timed_out"; abort unless m["seats"].any?{|s|s["seat"]=="utility-a2" && s["evaluator_family"]=="kimi"}' "$case_vault/45_ai-systems/self-growth/council/$topic/$task.convene.yaml" || fail "fallback manifest wrong"
 for model in codex-x fugu-x; do
   before=$(shasum "$case_ledger/$topic.md")
   if invoke "$topic" "$later" --fallback cost="$model" >"$tmp/fb-$model.out" 2>"$tmp/fb-$model.err"; then fail "ineligible fallback accepted: $model"; fi
   [ "$before" = "$(shasum "$case_ledger/$topic.md")" ] || fail "fallback refusal changed record"
 done
 invoke "$topic" "$later" --fallback cost=claude-sonnet || fail "reuse fallback failed"
-ruby -ryaml -e 'm=YAML.load_file(ARGV[0]); abort unless m["correlated_panel"] && m["correlated_reason"].include?("fallback reuse") && m["seats"].any?{|s|s["seat"]=="cost-a2" && s["evaluator_family"]=="claude"}' "$case_vault/45_ai-systems/self-growth/council/$topic/$task.convene.yaml" || fail "reuse was not stamped correlated"
+ruby -ryaml -e 'm=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]); abort unless m["correlated_panel"] && m["correlated_reason"].include?("fallback reuse") && m["seats"].any?{|s|s["seat"]=="cost-a2" && s["evaluator_family"]=="claude"}' "$case_vault/45_ai-systems/self-growth/council/$topic/$task.convene.yaml" || fail "reuse was not stamped correlated"
 
 # F7: a resolved seat cannot be replaced through fallback.
 new_case resolved_fallback; topic=resolved__vendor; write_record "$topic" T1 false fugu-1

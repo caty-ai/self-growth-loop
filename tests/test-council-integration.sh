@@ -58,7 +58,7 @@ reversibility: "git revert one commit"
 EOF
 bash "$convene" --vault "$vault" --topic "$topic" --workspace "$workspace" --now "$now" >"$tmp/convene.out" || fail "convene failed"
 manifest="$council/$task.convene.yaml"; [ -s "$manifest" ] || fail "manifest missing"
-ruby -ryaml -rdigest -e 'm=YAML.load_file(ARGV[0]); m["digests"]["bundle"].each{|n,d| abort n unless Digest::SHA256.file(File.join(ARGV[1],n)).hexdigest==d}' "$manifest" "$bundle" || fail "convene did not freeze real bundle bytes"
+ruby -ryaml -rdigest -e 'm=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]); m["digests"]["bundle"].each{|n,d| abort n unless Digest::SHA256.file(File.join(ARGV[1],n)).hexdigest==d}' "$manifest" "$bundle" || fail "convene did not freeze real bundle bytes"
 body() { cat >"$1" <<EOF
 VERDICT: $2
 ## Reasons
@@ -76,7 +76,7 @@ for lens in utility cost security; do body "$tmp/$lens.md" GO; bash "$record" --
 bash "$quorum" --vault "$vault" --topic "$topic" --workspace "$workspace" --apply --now "$now" >"$tmp/quorum.out" || fail "quorum apply failed"
 grep -q '^state: PENDING_OWNER$' "$ledger/$topic.md" || fail "record did not reach PENDING_OWNER"
 ruby -ryaml -e '
-  d=YAML.load_file(ARGV[0])
+  d=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])
   abort unless d["schema"]=="sgl-proposal/v2" && d["proposal_attempt"]==1
   abort unless d["owner_confirmation"]=={
     "status"=>"pending", "assurance"=>"standard", "reference"=>"",
@@ -92,5 +92,5 @@ abort unless evidence.fetch("quorum").fetch("counted_attempt_ids") == %w[utility
 abort unless evidence.fetch("council_evidence_sha256").match?(/\A[0-9a-f]{64}\z/)
 RUBY
 grep -q '^sealed: true$' "$manifest" || fail "manifest not sealed"
-ruby -ryaml -e 'l=File.readlines(ARGV[0]); i=l[1..].index { |x| x == "---\n" }; abort unless i; d=YAML.load(l[0..i+1].join); abort unless d["schema"]=="sgl-council-quorum/v1" && d["task_id"]==ARGV[1] && d["decision"]=="GO"' "$council/$task.quorum.md" "$task" || fail "GO quorum report invalid"
+ruby -ryaml -e 'l=File.readlines(ARGV[0]); i=l[1..].index { |x| x == "---\n" }; abort unless i; d=YAML.respond_to?(:unsafe_load) ? YAML.unsafe_load(l[0..i+1].join) : YAML.load(l[0..i+1].join); abort unless d["schema"]=="sgl-council-quorum/v1" && d["task_id"]==ARGV[1] && d["decision"]=="GO"' "$council/$task.quorum.md" "$task" || fail "GO quorum report invalid"
 echo "test-council-integration.sh: PASS"

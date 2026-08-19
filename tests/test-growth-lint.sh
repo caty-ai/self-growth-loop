@@ -12,7 +12,7 @@ cleanup() { rm -rf "$vault"; }
 trap cleanup EXIT HUP INT TERM
 fail() { echo "FAIL: $*" >&2; failures=$((failures + 1)); }
 assert_contains() { printf '%s' "$1" | grep -Fq "$2" || fail "expected [$2] in [$1]"; }
-state_of() { ruby -ryaml -e 'puts YAML.load_file(ARGV[0])["state"]' "$1"; }
+state_of() { ruby -ryaml -e 'puts (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["state"]' "$1"; }
 assert_pending_confirmation() {
   ruby -ryaml -e '
     expected = {
@@ -24,7 +24,7 @@ assert_pending_confirmation() {
       "principal" => "",
       "verified_at" => "",
     }
-    abort unless YAML.load_file(ARGV[0])["owner_confirmation"] == expected
+    abort unless (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["owner_confirmation"] == expected
   ' "$1" || fail "$2"
 }
 call_propose() { "$propose" --vault "$vault" --topic-key "$1" --title "$2" --state PROPOSED --proposer alpha --url "https://$1.test" --report source.md --now 2026-07-31T00:00:00Z >/dev/null; }
