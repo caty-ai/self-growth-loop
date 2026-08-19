@@ -41,7 +41,7 @@ flowchart LR
     S[sense<br/>collect ideas] --> P[propose<br/>one file per topic]
     P --> T[trial<br/>isolated test run]
     T --> C[council<br/>multi-model review]
-    C --> H{{human approval<br/>PENDING_SHO}}
+    C --> H{{human approval<br/>PENDING_OWNER}}
     H --> A[adopt<br/>backup + rollback plan on record]
     style H fill:#f9e79f,stroke:#b7950b,stroke-width:3px
 ```
@@ -58,7 +58,7 @@ Here is one proposal's life, start to finish.
 
 ## The loop in 60 seconds
 
-One proposal's life: a feed item ("tool X looks useful") becomes a ledger record (`PROPOSED`). The trial runner packages it as a task and hands it to the engine, which runs it in an isolated workspace (`TRIALING`). Results come back as evidence files; for anything beyond the lowest risk tier, a panel of different AI models each reads the evidence and votes (`COUNCIL` — the lowest, reversible tier records a sealed skip instead and goes straight to your queue). If it passes, the record waits in your approval queue (`PENDING_SHO`) — the queue report shows you every waiting decision. Only after you approve does the record move to `ADOPTED`, with a verified pre-adoption backup reference and a quantified rollback plan already on the file — the owning runtime then applies the change. Reject it, and the record says so forever — the same idea won't come back unless something material changes. To run this yourself, you need very little.
+One proposal's life: a feed item ("tool X looks useful") becomes a ledger record (`PROPOSED`). The trial runner packages it as a task and hands it to the engine, which runs it in an isolated workspace (`TRIALING`). Results come back as evidence files; for anything beyond the lowest risk tier, a panel of different AI models each reads the evidence and votes (`COUNCIL` — the lowest, reversible tier records a sealed skip instead and goes straight to your queue). If it passes, the record waits in your approval queue (`PENDING_OWNER`) — the queue report shows you every waiting decision. Only after you approve does the record move to `ADOPTED`, with a verified pre-adoption backup reference and a quantified rollback plan already on the file — the owning runtime then applies the change. Reject it, and the record says so forever — the same idea won't come back unless something material changes. To run this yourself, you need very little.
 
 ---
 
@@ -119,7 +119,7 @@ Point `SGL_ENGINE_SOURCE` at your engine checkout if it lives somewhere else.
 
 ## Why it's safe to try
 
-- **The human gate is structural, not polite.** Every adoption stops at `PENDING_SHO`, the dedicated owner-approval queue (engine [governance rules](https://github.com/caty-ai/caty-agent-harness/blob/main/docs/governance-rules.md), rule R4) — and this repo's own [adoption rules](docs/adoption-wiring.md) apply it to every tier: the lowest-risk council-skip path never skips the owner. No code path advances a record to `ADOPTING` without a verified owner-authorization artifact; identity-critical changes always additionally pass the full council (rule R12a).
+- **The human gate is structural, not polite.** Every adoption stops at `PENDING_OWNER`, the dedicated owner-approval queue (engine [governance rules](https://github.com/caty-ai/caty-agent-harness/blob/main/docs/governance-rules.md), rule R4) — and this repo's own [adoption rules](docs/adoption-wiring.md) apply it to every tier: the lowest-risk council-skip path never skips the owner. No code path advances a record to `ADOPTING` without a verified owner-authorization artifact; identity-critical changes always additionally pass the full council (rule R12a).
 - **Trials never touch your live setup.** They run in an isolated engine workspace ([docs/trial-isolation.md](docs/trial-isolation.md)); the only thing this plugin ever writes into an engine is a task file.
 - **A single-writer protocol with locking.** The ledger names one writer of record (plus the lint's narrow timeout lane), every write goes through the same lock, and every transition leaves an event line — a state won't be silently rewritten ([docs/ledger-spec.md](docs/ledger-spec.md)).
 - **Rollback is part of adoption.** A record can't be approved without a verified pre-adoption backup reference on it, and a quantified rollback path that the daily lint audits ([docs/adoption-wiring.md](docs/adoption-wiring.md)).

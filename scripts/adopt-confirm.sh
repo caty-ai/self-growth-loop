@@ -217,7 +217,7 @@ module ConfirmCLI
     @record ||= begin
       loaded = OwnerConfirmation.load_proposal_record(path: record_path)
       OwnerConfirmation.fail_closed("record-damaged", "proposal must be v2") unless loaded["schema"] == "sgl-proposal/v2"
-      OwnerConfirmation.fail_closed("record-damaged", "proposal state must be PENDING_SHO") unless loaded["state"] == "PENDING_SHO"
+      OwnerConfirmation.fail_closed("record-damaged", "proposal state must be PENDING_OWNER") unless loaded["state"] == "PENDING_OWNER"
       attempt = loaded["proposal_attempt"]
       OwnerConfirmation.fail_closed("record-damaged", "proposal attempt must be positive") unless attempt.is_a?(Integer) && attempt.positive?
       OwnerConfirmation.fail_closed("record-damaged", "owner_confirmation must be pending") unless loaded["owner_confirmation"] == OwnerConfirmation.pending_owner_confirmation

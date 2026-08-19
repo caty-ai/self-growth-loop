@@ -199,7 +199,7 @@ cmp -s "$record" "$tmp/cleanup.before" || fail "cleanup refusal changed proposal
 # Legacy T0 migration seals held workspace evidence, backs up both exact source
 # files, repairs a crash between seal and proposal publication, detects later
 # workspace drift, and restores both legacy files.
-new_case t0; topic=legacy-t0__tool; write_legacy "$topic" PENDING_SHO T0
+new_case t0; topic=legacy-t0__tool; write_legacy "$topic" PENDING_OWNER T0
 workspace="$tmp/t0/workspace"
 bundle="$workspace/loop/artifacts/$task/out/bundle"
 packet="$vault/45_ai-systems/self-growth/trial-packets/$task.md"
@@ -210,13 +210,13 @@ printf '# Packet\n\nLegacy T0 packet.\n' >"$packet"
 cat >"$t0_artifact" <<EOF
 T0 fast path: this reversible, non-identity-critical proposal skips council review and remains subject to the Sho human gate.
 
-- 2026-07-20T00:00:00Z alpha COUNCIL→PENDING_SHO — auto-adopt path (T0), council skipped
+- 2026-07-20T00:00:00Z alpha COUNCIL→PENDING_OWNER — auto-adopt path (T0), council skipped
 EOF
 cp "$record" "$tmp/t0.legacy-proposal"
 cp "$t0_artifact" "$tmp/t0.legacy-artifact"
 "$reconcile" --vault "$vault" --topic "$topic" --workspace "$workspace" --now 2026-07-21T00:00:00Z \
   >"$tmp/t0.out" || fail "legacy T0 reconcile failed"
-assert_v2 1 PENDING_SHO
+assert_v2 1 PENDING_OWNER
 grep -q '^sgl-t0-skip/v1$' "$t0_artifact" || fail "legacy T0 evidence was not sealed"
 t0_backup=$(backup_for)
 [ -f "$t0_backup" ] || fail "T0 backup missing"
@@ -235,7 +235,7 @@ cp "$tmp/t0.legacy-proposal" "$record"
 "$reconcile" --vault "$vault" --topic "$topic" --workspace "$workspace" --now 2026-07-22T00:00:00Z \
   >"$tmp/t0.repair" || fail "T0 crash repair failed"
 grep -Eq 'REPAIRED|RECONCILED' "$tmp/t0.repair" || fail "T0 crash repair was not reported"
-assert_v2 1 PENDING_SHO
+assert_v2 1 PENDING_OWNER
 [ "$(backup_for | wc -l | tr -d ' ')" -eq 1 ] || fail "T0 repair created a duplicate backup"
 
 cp "$record" "$tmp/t0.before-drift"

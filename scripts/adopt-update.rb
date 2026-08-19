@@ -114,11 +114,11 @@ end
 def consume_event_line(verified_at:, decision:, reference:, proposal_digest:, principal:, raw_value:)
   case decision
   when "GO"
-    "- #{verified_at} alpha PENDING_SHO→ADOPTING — Sho GO; authorization-ref=#{reference}; proposal-digest=#{proposal_digest}; principal=#{principal}; assurance=standard; backup_ref=#{raw_value}\n"
+    "- #{verified_at} alpha PENDING_OWNER→ADOPTING — Sho GO; authorization-ref=#{reference}; proposal-digest=#{proposal_digest}; principal=#{principal}; assurance=standard; backup_ref=#{raw_value}\n"
   when "REJECT"
-    "- #{verified_at} alpha PENDING_SHO→REJECTED — Sho REJECT; authorization-ref=#{reference}; proposal-digest=#{proposal_digest}; principal=#{principal}; assurance=standard; operator_reason=#{raw_value}\n"
+    "- #{verified_at} alpha PENDING_OWNER→REJECTED — Sho REJECT; authorization-ref=#{reference}; proposal-digest=#{proposal_digest}; principal=#{principal}; assurance=standard; operator_reason=#{raw_value}\n"
   when "WATCH"
-    "- #{verified_at} alpha PENDING_SHO→WATCH — Sho WATCH; authorization-ref=#{reference}; proposal-digest=#{proposal_digest}; principal=#{principal}; assurance=standard; operator_reason=#{raw_value}\n"
+    "- #{verified_at} alpha PENDING_OWNER→WATCH — Sho WATCH; authorization-ref=#{reference}; proposal-digest=#{proposal_digest}; principal=#{principal}; assurance=standard; operator_reason=#{raw_value}\n"
   else
     OwnerConfirmation.fail_closed("record-damaged", "unknown decision")
   end
@@ -469,7 +469,7 @@ def handle_consume(command:, record_path:, dry:, args:)
   OwnerConfirmation.fail_closed("authorization-artifact-damaged", "snapshot mismatch") unless artifact.fetch("snapshot_bytes") == snapshot
 
   if record.dig("owner_confirmation", "status") == "pending"
-    OwnerConfirmation.fail_closed("authorization-target-state-changed") unless record["state"] == "PENDING_SHO"
+    OwnerConfirmation.fail_closed("authorization-target-state-changed") unless record["state"] == "PENDING_OWNER"
     sampled = Time.at(Time.now.to_i).utc
     unless artifact.fetch("issued_time").to_i <= sampled.to_i && sampled.to_i < artifact.fetch("expires_time").to_i
       OwnerConfirmation.fail_closed("authorization-artifact-expired")
@@ -513,7 +513,7 @@ def handle_consume(command:, record_path:, dry:, args:)
       ),
     )
     if dry
-      puts "DRY-RUN #{record.fetch('topic_key')}: PENDING_SHO→#{record.fetch('state')}"
+      puts "DRY-RUN #{record.fetch('topic_key')}: PENDING_OWNER→#{record.fetch('state')}"
     else
       OwnerConfirmation.validate_and_rewrite_proposal_v2!(record: record, path: record.path)
     end

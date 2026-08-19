@@ -144,7 +144,7 @@ LC_ALL=C LANG=C invoke "$topic" >"$case_root/out" || fail "LC_ALL=C convene fail
 # T0 skips the panel but still requires Sho; identity-critical T0 is damaged.
 new_case t0; topic=tzero__vendor; write_record "$topic" T0 false gpt-5
 invoke "$topic" || fail "T0 fast path failed"
-grep -q '^state: PENDING_SHO$' "$case_ledger/$topic.md" || fail "T0 did not advance"
+grep -q '^state: PENDING_OWNER$' "$case_ledger/$topic.md" || fail "T0 did not advance"
 t0_artifact="$case_vault/45_ai-systems/self-growth/council/$topic/$task.t0-skip.md"
 [ -s "$t0_artifact" ] || fail "T0 note missing"
 ruby -rdigest -e '

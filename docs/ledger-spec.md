@@ -117,7 +117,7 @@ The v2 record shape is closed at exactly 23 top-level keys:
 `report_due`, `reversibility`
 
 The `proposal_attempt` field is a nonnegative integer. Attempt 0 is
-initialization-only. Every fresh `PENDING_SHO` transition increments it once and
+initialization-only. Every fresh `PENDING_OWNER` transition increments it once and
 starts a new pending owner-confirmation mapping.
 
 The `owner_confirmation` mapping is exactly seven keys in this order:
@@ -136,11 +136,14 @@ The state/form matrix is closed:
 
 | State | Allowed form | Rule |
 |---|---|---|
-| `PROPOSED`, `TRIALING`, `COUNCIL` | pending or verified | preserve incoming; fresh `PENDING_SHO` increments and resets pending |
-| `PENDING_SHO` | pending only | issuance / consume precondition |
+| `PROPOSED`, `TRIALING`, `COUNCIL` | pending or verified | preserve incoming; fresh `PENDING_OWNER` increments and resets pending |
+| `PENDING_OWNER` | pending only | issuance / consume precondition |
 | `ADOPTING`, `ADOPTED`, `WATCH` | verified only | produced / preserved after consumed disposition; `ADOPTED` is terminal governance-only |
 | `EXPIRED` | pending only | unconfirmed SLA transition preserves pending |
 | `DLQ`, `REJECTED` | pending or verified | preserve across council/SLA or adoption rollback paths |
+
+For one-release compatibility, legacy `PENDING_SHO` is accepted on read and
+normalized to `PENDING_OWNER` until v1.0; all writes use `PENDING_OWNER`.
 
 Any state/form combination outside this table is damaged and exits 3. The legacy
 20-key schema from §9 is closed separately and does not migrate in place to v2;
@@ -177,7 +180,7 @@ Event log line format (grep-parseable, one line per event):
 ```
                        ┌────────── RETRY (≤2, council-ordered) ──────────┐
                        ▼                                                 │
-PROPOSED ──► TRIALING ──► COUNCIL ──► PENDING_SHO ──► ADOPTING ──► ADOPTED
+PROPOSED ──► TRIALING ──► COUNCIL ──► PENDING_OWNER ──► ADOPTING ──► ADOPTED
    │             │           │             │              │
    │ 14d         │ 7d        │ 3d          │ 30d          │ 7d
    ▼             ▼           ▼             ▼              ▼
@@ -196,7 +199,7 @@ PROPOSED ──► TRIALING ──► COUNCIL ──► PENDING_SHO ──► AD
 | PROPOSED | Intake done, awaiting trial slot (quota §5) | Alpha (writer of record) | 14 d | EXPIRED |
 | TRIALING | Engine task enqueued via `tr-enqueue`; trial running | Assigned agent (result via Task Packet); Alpha records | 7 d | DLQ (zombie trial) |
 | COUNCIL | Cross-model verdict in progress | Alpha (council runner) | 3 d | DLQ |
-| PENDING_SHO | Human gate; surfaced in queue report §top | **Sho** | 30 d | EXPIRED **without cooldown** (council work is preserved; growth-lint re-surfaces a reminder at 14 d before expiry; re-entry needs only a human bump, not the full §4 test) |
+| PENDING_OWNER | Human gate; surfaced in queue report §top | **Sho** | 30 d | EXPIRED **without cooldown** (council work is preserved; growth-lint re-surfaces a reminder at 14 d before expiry; re-entry needs only a human bump, not the full §4 test) |
 | ADOPTING | Approved; executing rollout. **Precondition: `backup_ref` non-empty (R5) and `effect_metric`+`report_due` set (R11)** | Alpha | 7 d | DLQ |
 | WATCH | Parked; not in any quota | growth-lint (re-entry check only) | none | — |
 | ADOPTED / REJECTED / EXPIRED / DLQ | Terminal | — | — | — |
@@ -270,7 +273,7 @@ Before creating any proposal, the proposer (or Alpha ingesting a report) MUST:
 2. If it exists: append SIGHTING (or invoke §4 if claiming materially-new).
 3. If `state ∈ {REJECTED, EXPIRED, DLQ}` or `cooldown_until` is in the future:
    suppress (no new proposal, sighting traced) unless §4 passes. Default cooldown on
-   REJECTED and trial-path EXPIRED: **30 d**. PENDING_SHO-path EXPIRED carries **no
+   REJECTED and trial-path EXPIRED: **30 d**. PENDING_OWNER-path EXPIRED carries **no
    cooldown** (§3) — a human bump alone re-enters it.
 4. If `state = ADOPTED`: append the already-adopted note event, never re-propose.
 

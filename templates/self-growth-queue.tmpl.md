@@ -8,9 +8,9 @@ Ledger: `{{LEDGER_DIR}}`
 
 {{EMPTY_BANNER}}
 
-## PENDING_SHO
+## PENDING_OWNER
 
-{{PENDING_SHO_ROWS}}
+{{PENDING_OWNER_ROWS}}
 
 ## Totals by state
 

@@ -42,7 +42,7 @@ write_pending_t0() {
 schema: sgl-proposal/v2
 topic_key: $topic
 title: Adopt $topic
-state: PENDING_SHO
+state: PENDING_OWNER
 state_entered_at: 2026-07-20T00:00:00Z
 risk_tier: T0
 identity_critical: false
