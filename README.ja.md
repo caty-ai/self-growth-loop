@@ -81,7 +81,7 @@ flowchart LR
 
 これをコーディングエージェント（Claude Code、Codexなど）に貼り付けてください。
 
-> Clone https://github.com/caty-ai/self-growth-loop and run `bash tests/run.sh`. Then show me how to create a demo proposal with scripts/propose.sh against a temporary vault directory.
+> Clone https://github.com/caty-ai/self-growth-loop and run `make test`. Then show me how to create a demo proposal with scripts/propose.sh against a temporary vault directory.
 
 ### 自分の手でやる場合
 
@@ -149,6 +149,15 @@ make test                  # 全テストスイート。エンジン統合テス
 | 共有ライブラリの切り出し | ⏳ 保留中 | 2つ目のプラグインが登場するまで意図的に保留（切り出し方針の詳細はエンジンのplugin-convention参照） |
 
 ✅ が付いている行はすべてテストつきで提供されています——`make test` で実行できます。テストスイートには、固定タグの実エンジンを動かすエンジン統合テストも含まれます。
+
+---
+
+## プロジェクトの状況
+
+- **CI:** まだありません。共有 test/lint caller は [#16](https://github.com/caty-ai/self-growth-loop/issues/16)（B6）で導入予定で、[family-dev-handbook#80](https://github.com/caty-ai/family-dev-handbook/issues/80) の完了待ちです。それまでヘッダーバッジはグレーのままで、`make test` がローカルのゲートです。
+- **検証済み環境:** macOS（bash 3.2+、システムの ruby）。フルスイートはローカルで成功しています。その他の OS は未検証です。
+- **成熟度:** **reference** — このリポジトリに対するキャンペーン指定です。正式な公開ゲートの配線は [#12](https://github.com/caty-ai/self-growth-loop/issues/12)（B9）で導入されます。
+- **既知の制約:** CI はまだなく、テストの検証は macOS のみです。ruby は必須で、ない場合はエントリースクリプトが 127 で終了します。エンジン統合は [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0) に固定されています。
 
 ---
 

@@ -2,6 +2,15 @@
 
 Thanks for your interest in self-growth-loop.
 
+## Prerequisites
+
+To run this repository's scripts and tests, you need:
+
+- **bash 3.2+** — macOS system bash is the supported floor.
+- **ruby** — standard library only; the scripts run with macOS system ruby. Every entry script checks for it first and exits 127 when it is unavailable.
+- **make** — the family-standard entry point for tests and lint.
+- **git** — for the issue-and-branch workflow below.
+
 ## Ground rules
 
 - **Issue-first.** Every change starts as a GitHub issue stating *why*, a testable *done when*, and a prediction of the files it will touch. 1 issue = 1 branch = 1 pull request.
@@ -9,7 +18,7 @@ Thanks for your interest in self-growth-loop.
 - **Tests are the contract.** Run the full suite before opening a PR:
 
   ```sh
-  bash tests/run.sh
+  make test
   ```
 
   The integration test additionally needs a local checkout of the engine
@@ -22,7 +31,7 @@ Thanks for your interest in self-growth-loop.
 1. Open (or pick) an issue and state your intent on it.
 2. Branch from `main` (`issue-<n>-<slug>`).
 3. Make the change; add or update tests next to the behavior you touched.
-4. Run `bash tests/run.sh` and include the result in the PR description.
+4. Run `make test` and include the result in the PR description.
 5. Open a PR that lists the files touched and how each "done when" item was verified.
 
 ## Labels
