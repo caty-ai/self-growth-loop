@@ -131,6 +131,9 @@ run_convene() {
 
   BUNDLE_FILES = %w[run.log env-manifest.txt config-diff.txt permissions.md cost.txt attempts.md repro.md rollback-test.md].freeze
   LENSES = %w[utility cost security].freeze
+  # legacy-read: PENDING_SHO accepted until v1.0 (issue #10)
+  HISTORICAL_T0_TRANSITION = "COUNCIL→PENDING_SHO".freeze
+  CURRENT_T0_TRANSITION = "COUNCIL→PENDING_OWNER".freeze
 
   def atomic_write(path, content, mode = nil)
     directory = File.dirname(path)
@@ -245,9 +248,15 @@ run_convene() {
     next_record
   end
 
-  def t0_legacy_artifact_bytes(state_entered_at)
+  def t0_legacy_artifact_bytes(state_entered_at, transition)
     "T0 fast path: this reversible, non-identity-critical proposal skips council review and remains subject to the Sho human gate.\n\n" \
-      "- #{canonical_timestamp_value(state_entered_at, "state_entered_at")} alpha COUNCIL→PENDING_OWNER — auto-adopt path (T0), council skipped\n"
+      "- #{canonical_timestamp_value(state_entered_at, "state_entered_at")} alpha #{transition} — auto-adopt path (T0), council skipped\n"
+  end
+
+  def t0_legacy_artifact_candidates(state_entered_at)
+    [HISTORICAL_T0_TRANSITION, CURRENT_T0_TRANSITION].map do |transition|
+      t0_legacy_artifact_bytes(state_entered_at, transition).b
+    end
   end
 
   def publish_t0_artifact!(vault_root:, record_path:, workspace_root:)
@@ -273,8 +282,8 @@ run_convene() {
       if existing == bytes
         return proposal
       end
-      legacy = t0_legacy_artifact_bytes(proposal.fetch("state_entered_at"))
-      raise OwnerConfirmation::Error.new("t0-evidence-conflict", target) unless existing == legacy
+      legacy = t0_legacy_artifact_candidates(proposal.fetch("state_entered_at"))
+      raise OwnerConfirmation::Error.new("t0-evidence-conflict", target) unless legacy.include?(existing)
       OwnerConfirmation.atomic_replace_regular_file(target, bytes, label: "t0-evidence")
       return proposal
     end

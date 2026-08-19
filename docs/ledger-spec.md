@@ -142,8 +142,9 @@ The state/form matrix is closed:
 | `EXPIRED` | pending only | unconfirmed SLA transition preserves pending |
 | `DLQ`, `REJECTED` | pending or verified | preserve across council/SLA or adoption rollback paths |
 
-For one-release compatibility, legacy `PENDING_SHO` is accepted on read and
-normalized to `PENDING_OWNER` until v1.0; all writes use `PENDING_OWNER`.
+For one-release compatibility, legacy `PENDING_SHO` is accepted on read in the
+record state field and legacy T0 prose artifact/backup bytes until v1.0; all
+writes use `PENDING_OWNER`.
 
 Any state/form combination outside this table is damaged and exits 3. The legacy
 20-key schema from §9 is closed separately and does not migrate in place to v2;

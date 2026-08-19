@@ -183,6 +183,30 @@ ruby -ryaml -e '
   }
 ' "$case_ledger/$topic.md" || fail "T0 fast path did not increment/reset owner confirmation"
 
+# Re-sealing accepts both historical and current prose notes, then emits only
+# sealed evidence and PENDING_OWNER state.
+new_case t0_legacy_prose; topic=t0legacyprose__vendor; write_record "$topic" T0 false gpt-5
+t0_artifact="$case_vault/45_ai-systems/self-growth/council/$topic/$task.t0-skip.md"
+cat >"$t0_artifact" <<EOF
+T0 fast path: this reversible, non-identity-critical proposal skips council review and remains subject to the Sho human gate.
+
+- 2026-07-20T00:00:00Z alpha COUNCIL→PENDING_SHO — auto-adopt path (T0), council skipped
+EOF
+invoke "$topic" "$now" --fallback utility=gpt-5 || fail "historical T0 prose re-seal failed"
+grep -q '^sgl-t0-skip/v1$' "$t0_artifact" || fail "historical T0 prose was not re-sealed"
+grep -q '^state: PENDING_OWNER$' "$case_ledger/$topic.md" || fail "historical T0 prose did not advance"
+
+new_case t0_current_prose; topic=t0currentprose__vendor; write_record "$topic" T0 false gpt-5
+t0_artifact="$case_vault/45_ai-systems/self-growth/council/$topic/$task.t0-skip.md"
+cat >"$t0_artifact" <<EOF
+T0 fast path: this reversible, non-identity-critical proposal skips council review and remains subject to the Sho human gate.
+
+- 2026-07-20T00:00:00Z alpha COUNCIL→PENDING_OWNER — auto-adopt path (T0), council skipped
+EOF
+invoke "$topic" "$now" --fallback utility=gpt-5 || fail "current T0 prose re-seal failed"
+grep -q '^sgl-t0-skip/v1$' "$t0_artifact" || fail "current T0 prose was not re-sealed"
+grep -q '^state: PENDING_OWNER$' "$case_ledger/$topic.md" || fail "current T0 prose did not advance"
+
 # T0 artifact publication refuses symlinked parents.
 new_case t0_symlink_parent; topic=t0symlink__vendor; write_record "$topic" T0 false gpt-5
 real_topic_dir="$case_root/real-council-topic"

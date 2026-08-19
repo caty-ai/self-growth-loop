@@ -25,6 +25,18 @@ ruby -ryaml -e 'd=YAML.load_file(ARGV[0]); abort unless d["source_items"][1]["ur
 call "$key" x PROPOSED alpha 'https://second.example/a"b\q' duplicate.md >/dev/null
 assert_eq "$(count '^  - url:' "$record")" 2; yaml_ok "$record"
 
+# Legacy state bytes normalize on both existing-record write paths.
+legacy_key='pending-legacy__community'; call "$legacy_key" x PROPOSED alpha https://legacy-pending.example one.md >/dev/null
+legacy_record="$ledger/$legacy_key.md"; sed -i.bak 's/^state: PROPOSED$/state: PENDING_SHO/' "$legacy_record"; rm -f "$legacy_record.bak"
+legacy_sighting=$(call "$legacy_key" x PROPOSED beta https://legacy-pending.example/two two.md)
+assert_contains "$legacy_sighting" SIGHTED; grep -q '^state: PENDING_OWNER$' "$legacy_record" || fail 'legacy sighting state was not normalized'
+
+legacy_old_key='pending-old__vendor'; call "$legacy_old_key" x PROPOSED alpha https://pending-old.example/v1 one.md >/dev/null
+legacy_old_record="$ledger/$legacy_old_key.md"; sed -i.bak 's/^state: PROPOSED$/state: PENDING_SHO/' "$legacy_old_record"; rm -f "$legacy_old_record.bak"
+legacy_new_key='pending-old__vendor__v2'
+legacy_superseded=$("$tool" --vault "$temp_vault" --topic-key "$legacy_new_key" --title x --state PROPOSED --proposer alpha --url https://pending-old.example/v2 --report two.md --supersedes "$legacy_old_key")
+assert_contains "$legacy_superseded" CREATED; grep -q '^state: PENDING_OWNER$' "$legacy_old_record" || fail 'legacy superseded state was not normalized'
+
 # Injection, all C0 controls, bad keys, and missing values fail fast with status 2.
 set +e
 "$tool" --vault "$temp_vault" --topic-key inject__community --title x --state PROPOSED --proposer $'alpha\nstate: ADOPTED' --url u --report r >/dev/null 2>&1; injection_status=$?
