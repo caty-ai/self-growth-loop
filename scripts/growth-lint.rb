@@ -25,7 +25,7 @@ def record(path)
   lines = raw.lines; raise 'frontmatter missing' unless lines.first == "---\n"
   finish = lines[1, 200].to_a.index("---\n"); raise 'frontmatter unbounded or missing terminator' unless finish
   finish += 1; raise 'frontmatter too large' if lines[0..finish].join.bytesize > 32 * 1024
-  data = YAML.load(lines[0..finish].join); raise 'frontmatter is not a mapping' unless data.is_a?(Hash)
+  data = YAML.respond_to?(:unsafe_load) ? YAML.unsafe_load(lines[0..finish].join) : YAML.load(lines[0..finish].join); raise 'frontmatter is not a mapping' unless data.is_a?(Hash)
   OwnerConfirmation.normalize_state_on_read!(data)
   %w[state state_entered_at updated].each { |k| raise "non-literal or missing #{k} key" unless lines[1...finish].any? { |l| l.start_with?("#{k}:") } }
   [lines, finish, data]
@@ -51,7 +51,7 @@ def prepare(path, lines, stop, target, entered, cooldown, updated, event)
   raise 'non-literal key spelling cannot be rewritten' unless %w[state state_entered_at updated].all? { |k| seen[k] }
   temp = "#{path}.growth-lint.#{$$}.#{rand(1_000_000)}"; mode = File.stat(path).mode & 0o7777
   File.open(temp, 'w', mode) { |f| f.write(out.join); f.write("#{event}\n"); f.flush; f.fsync }; File.chmod(mode, temp)
-  parsed = YAML.load_file(temp)
+  parsed = YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(temp) : YAML.load_file(temp)
   {'state'=>target, 'state_entered_at'=>entered, 'cooldown_until'=>cooldown, 'updated'=>updated}.each do |k,v|
     equal = if %w[state_entered_at cooldown_until].include?(k) && ts(parsed[k]) && ts(v)
       ts(parsed[k]) == ts(v)
