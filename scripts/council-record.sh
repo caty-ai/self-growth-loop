@@ -2,6 +2,10 @@
 # Record a validated evaluator verdict. macOS Bash 3.2 compatible.
 
 set -u
+if ! command -v ruby >/dev/null 2>&1; then
+  echo "council-record.sh: ruby not found on PATH; install ruby to use this repo's scripts" >&2
+  exit 127
+fi
 case "${LC_ALL:-}" in *UTF-8*|*utf8*) ;; *) LC_ALL=en_US.UTF-8; export LC_ALL ;; esac
 
 usage() {

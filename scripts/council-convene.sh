@@ -2,6 +2,10 @@
 # Convene a cross-vendor council panel. macOS Bash 3.2 compatible.
 
 set -u
+if ! command -v ruby >/dev/null 2>&1; then
+  echo "council-convene.sh: ruby not found on PATH; install ruby to use this repo's scripts" >&2
+  exit 127
+fi
 # shellcheck disable=SC2034 # consumed by sourced lock helper
 ADOPT_TOOL=council-convene.sh
 # shellcheck disable=SC1091

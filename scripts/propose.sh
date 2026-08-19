@@ -2,6 +2,10 @@
 # Create or append a proposal-ledger record. Compatible with macOS bash 3.2.
 
 set -u
+if ! command -v ruby >/dev/null 2>&1; then
+  echo "propose.sh: ruby not found on PATH; install ruby to use this repo's scripts" >&2
+  exit 127
+fi
 
 # Inline Ruby renders UTF-8 event text even under minimal launchd-style
 # environments, so keep its locale explicit and portable.

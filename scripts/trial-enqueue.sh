@@ -2,6 +2,10 @@
 # Enqueue an approved proposal as an isolated engine trial. macOS Bash 3.2 compatible.
 
 set -u
+if ! command -v ruby >/dev/null 2>&1; then
+  echo "trial-enqueue.sh: ruby not found on PATH; install ruby to use this repo's scripts" >&2
+  exit 127
+fi
 
 # Inline Ruby needs a UTF-8 locale (event lines contain multibyte arrows/dashes);
 # launchd and other minimal environments provide none.

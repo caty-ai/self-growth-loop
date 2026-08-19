@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -u
+if ! command -v ruby >/dev/null 2>&1; then
+  echo "adopt-confirm.sh: ruby not found on PATH; install ruby to use this repo's scripts" >&2
+  exit 127
+fi
 
 # shellcheck disable=SC2034 # consumed by sourced helper
 ADOPT_TOOL=adopt-confirm.sh
