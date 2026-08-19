@@ -17,7 +17,7 @@ EOF
 }
 fail() { echo "council-record.sh: $*" >&2; exit 2; }
 utc_timestamp() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
-file_mtime() { stat -f '%m' "$1" 2>/dev/null || stat -c '%Y' "$1" 2>/dev/null; }
+file_mtime() { ruby -e 'print File.mtime(ARGV.fetch(0)).to_i' "$1"; }
 
 reject_control_chars() {
   if ruby -e 'exit(ARGV[0].bytes.any? { |b| b <= 31 || b == 127 } ? 0 : 1)' "$1"; then

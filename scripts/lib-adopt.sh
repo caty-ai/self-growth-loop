@@ -202,7 +202,7 @@ adopt_with_lock() {
   done
 }
 
-file_mtime() { stat -f '%m' "$1" 2>/dev/null || stat -c '%Y' "$1" 2>/dev/null; }
+file_mtime() { ruby -e 'print File.mtime(ARGV.fetch(0)).to_i' "$1"; }
 
 adopt_run_worker() {
   root=$(adopt_repo_root) || exit 2

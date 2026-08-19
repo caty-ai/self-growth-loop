@@ -244,7 +244,11 @@ grep -Eqi 't0|digest|mismatch|violation|conflict|artifact' "$tmp/t0-mismatch.err
 for kind in empty seat bundle; do
   new_case "ref-$kind"; topic="ref$kind"__vendor; write_record "$topic" T1 false gpt-5
   case $kind in
-    empty) sed -i '' 's/executor_model: "gpt-5"/executor_model: ""/' "$case_ledger/$topic.md"; code=EXECUTOR_IDENTITY_UNRESOLVED; args='' ;;
+    empty)
+      sed -i.bak 's/executor_model: "gpt-5"/executor_model: ""/' "$case_ledger/$topic.md" && rm -f "$case_ledger/$topic.md.bak"
+      grep -q '^executor_model: ""$' "$case_ledger/$topic.md" || fail "empty-executor mutation did not land"
+      code=EXECUTOR_IDENTITY_UNRESOLVED; args=''
+      ;;
     seat) code=SEAT_EQUALS_EXECUTOR; args='--seat security=gpt-5' ;;
     bundle) rm "$case_workspace/loop/artifacts/$task/out/bundle/run.log"; code=BUNDLE_INCOMPLETE; args='' ;;
   esac
