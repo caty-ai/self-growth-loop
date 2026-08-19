@@ -157,7 +157,8 @@ cmp -s "$ledger/$topic.md" "$case_root/before.md" || fail "attempt namespace con
 
 # T2 uses the same sealed evidence contract and resets attempt identity.
 new_case t2
-sed -i '' 's/^risk_tier: T1$/risk_tier: T2/; s/^identity_critical: false$/identity_critical: true/' "$ledger/$topic.md"
+sed -i.bak 's/^risk_tier: T1$/risk_tier: T2/; s/^identity_critical: false$/identity_critical: true/' "$ledger/$topic.md" &&
+  rm -f "$ledger/$topic.md.bak"
 verdict utility GO; verdict cost GO; verdict security GO
 invoke --apply >"$case_root/out" || fail "T2 quorum apply failed"
 grep -q '^proposal_attempt: 1$' "$ledger/$topic.md" || fail "T2 attempt reset missing"

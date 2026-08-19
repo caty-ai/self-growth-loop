@@ -14,7 +14,18 @@ future_due_utc() {
 report_due=$(future_due_utc) || fail "could not derive future report_due fixture"
 
 [ -x "$confirm" ] || fail "missing executable: $confirm"
-command -v expect >/dev/null || fail "expect is required for PTY regression coverage"
+
+pty_available=false
+if command -v expect >/dev/null 2>&1 && expect <<'EXPECT' >/dev/null 2>&1
+set timeout 5
+spawn ruby -e {File.open("/dev/tty", "r+") {}}
+expect eof
+set result [wait]
+exit [lindex $result 3]
+EXPECT
+then
+  pty_available=true
+fi
 
 write_owner() {
   mkdir -p "$vault/45_ai-systems/self-growth/config"
@@ -201,34 +212,35 @@ fi
 grep -q 'owner-config' "$tmp/order.err" || fail "owner config was not rejected before TTY access"
 ! grep -q 'tty-required' "$tmp/order.err" || fail "TTY check ran before owner validation"
 
-# Exact TTY response grammar rejects any mismatched or surplus byte. Each case
-# starts without an artifact so a false acceptance is durable and observable.
-for response_case in wrong leading trailing extra crlf; do
-  new_case "response-$response_case"; topic="response-${response_case}__tool"; write_pending_t0 "$topic"
-  prompt=$(prompt_for GO backup metric "$report_due" "") || fail "$response_case prompt derivation failed"
-  case "$response_case" in
-    wrong) response="WRONG $prompt"$'\r' ;;
-    leading) response=" $prompt"$'\r' ;;
-    trailing) response="$prompt "$'\r' ;;
-    extra) response="$prompt"$'\rX' ;;
-    crlf) response="$prompt"$'\r\n' ;;
-  esac
-  pty_reject "$response" "$tmp/response-$response_case.out" || fail "$response_case TTY response was accepted"
-  [ ! -e "$(artifact_path)" ] || fail "$response_case TTY response wrote an artifact"
-done
+if "$pty_available"; then
+  # Exact TTY response grammar rejects any mismatched or surplus byte. Each case
+  # starts without an artifact so a false acceptance is durable and observable.
+  for response_case in wrong leading trailing extra crlf; do
+    new_case "response-$response_case"; topic="response-${response_case}__tool"; write_pending_t0 "$topic"
+    prompt=$(prompt_for GO backup metric "$report_due" "") || fail "$response_case prompt derivation failed"
+    case "$response_case" in
+      wrong) response="WRONG $prompt"$'\r' ;;
+      leading) response=" $prompt"$'\r' ;;
+      trailing) response="$prompt "$'\r' ;;
+      extra) response="$prompt"$'\rX' ;;
+      crlf) response="$prompt"$'\r\n' ;;
+    esac
+    pty_reject "$response" "$tmp/response-$response_case.out" || fail "$response_case TTY response was accepted"
+    [ ! -e "$(artifact_path)" ] || fail "$response_case TTY response wrote an artifact"
+  done
 
-new_case response-eof; topic='response-eof__tool'; write_pending_t0 "$topic"
-pty_eof_reject "$tmp/response-eof.out" || fail "EOF-without-LF TTY response was accepted"
-[ ! -e "$(artifact_path)" ] || fail "EOF-without-LF response wrote an artifact"
+  new_case response-eof; topic='response-eof__tool'; write_pending_t0 "$topic"
+  pty_eof_reject "$tmp/response-eof.out" || fail "EOF-without-LF TTY response was accepted"
+  [ ! -e "$(artifact_path)" ] || fail "EOF-without-LF response wrote an artifact"
 
-# Redirected stdin cannot supply the confirmation response while /dev/tty is
-# authoritative. The exact prompt on stdin is ignored; a wrong TTY response
-# still rejects and leaves the namespace empty.
-new_case redirected-stdin; topic=redirected-stdin__tool; write_pending_t0 "$topic"
-prompt=$(prompt_for GO backup metric "$report_due" "") || fail "redirected stdin prompt derivation failed"
-printf '%s\n' "$prompt" >"$tmp/redirected-input"
-EXPECT_CONFIRM=$prompt EXPECT_BIN=$confirm EXPECT_VAULT=$vault EXPECT_TOPIC=$topic EXPECT_INPUT="$tmp/redirected-input" EXPECT_DUE=$report_due \
-  expect <<'EXPECT' >"$tmp/redirected.out" 2>&1 || fail "redirected stdin supplied confirmation"
+  # Redirected stdin cannot supply the confirmation response while /dev/tty is
+  # authoritative. The exact prompt on stdin is ignored; a wrong TTY response
+  # still rejects and leaves the namespace empty.
+  new_case redirected-stdin; topic=redirected-stdin__tool; write_pending_t0 "$topic"
+  prompt=$(prompt_for GO backup metric "$report_due" "") || fail "redirected stdin prompt derivation failed"
+  printf '%s\n' "$prompt" >"$tmp/redirected-input"
+  EXPECT_CONFIRM=$prompt EXPECT_BIN=$confirm EXPECT_VAULT=$vault EXPECT_TOPIC=$topic EXPECT_INPUT="$tmp/redirected-input" EXPECT_DUE=$report_due \
+    expect <<'EXPECT' >"$tmp/redirected.out" 2>&1 || fail "redirected stdin supplied confirmation"
 set timeout 15
 spawn /bin/sh -c {exec "$EXPECT_BIN" --vault "$EXPECT_VAULT" --topic "$EXPECT_TOPIC" --decision GO --backup-ref backup --effect-metric metric --report-due "$EXPECT_DUE" < "$EXPECT_INPUT"}
 expect -exact "$env(EXPECT_CONFIRM)\r\n"
@@ -237,7 +249,8 @@ expect eof
 set result [wait]
 exit [expr {[lindex $result 3] == 0 ? 1 : 0}]
 EXPECT
-[ ! -e "$(artifact_path)" ] || fail "redirected stdin wrote an artifact"
+  [ ! -e "$(artifact_path)" ] || fail "redirected stdin wrote an artifact"
+fi
 
 # Empty-valued irrelevant decision options remain present options and fail
 # before TTY access or artifact publication.
@@ -258,28 +271,29 @@ bash "$confirm" --vault "$vault" --topic "$topic" --decision WATCH --reason wait
 grep -q -- '--backup-ref is irrelevant to non-GO decisions' "$tmp/empty-irrelevant-watch.err" || fail "empty WATCH backup refusal missing"
 [ ! -e "$(artifact_path)" ] || fail "empty WATCH backup wrote an artifact"
 
-# A real PTY creates one artifact. An identical rerun returns the exact same
-# reference and bytes without needing a controlling terminal.
-new_case reuse; topic=reuse__tool; write_pending_t0 "$topic"
-pty_issue GO "backup O'Brien" "latency p95" "$report_due" "" "$tmp/reuse.issue" || fail "PTY issuance failed"
-artifact=$(artifact_path)
-[ -s "$artifact" ] || fail "PTY issuance did not create artifact"
-reference=$(reference_from "$tmp/reuse.issue")
-[ -n "$reference" ] || fail "issuance reference missing"
-cp "$artifact" "$tmp/reuse.bytes"
-if ! bash "$confirm" --vault "$vault" --topic "$topic" --decision GO \
-  --backup-ref "backup O'Brien" --effect-metric "latency p95" --report-due "$report_due" \
-  </dev/null >"$tmp/reuse.again" 2>"$tmp/reuse.err"; then
-  fail "unexpired identical artifact required a TTY"
-fi
-[ "$reference" = "$(reference_from "$tmp/reuse.again")" ] || fail "unexpired reference changed"
-cmp -s "$artifact" "$tmp/reuse.bytes" || fail "unexpired artifact bytes changed"
-grep -Fq "'backup O'\\''Brien'" "$tmp/reuse.again" || fail "single quote was not POSIX-serialized"
+if "$pty_available"; then
+  # A real PTY creates one artifact. An identical rerun returns the exact same
+  # reference and bytes without needing a controlling terminal.
+  new_case reuse; topic=reuse__tool; write_pending_t0 "$topic"
+  pty_issue GO "backup O'Brien" "latency p95" "$report_due" "" "$tmp/reuse.issue" || fail "PTY issuance failed"
+  artifact=$(artifact_path)
+  [ -s "$artifact" ] || fail "PTY issuance did not create artifact"
+  reference=$(reference_from "$tmp/reuse.issue")
+  [ -n "$reference" ] || fail "issuance reference missing"
+  cp "$artifact" "$tmp/reuse.bytes"
+  if ! bash "$confirm" --vault "$vault" --topic "$topic" --decision GO \
+    --backup-ref "backup O'Brien" --effect-metric "latency p95" --report-due "$report_due" \
+    </dev/null >"$tmp/reuse.again" 2>"$tmp/reuse.err"; then
+    fail "unexpired identical artifact required a TTY"
+  fi
+  [ "$reference" = "$(reference_from "$tmp/reuse.again")" ] || fail "unexpired reference changed"
+  cmp -s "$artifact" "$tmp/reuse.bytes" || fail "unexpired artifact bytes changed"
+  grep -Fq "'backup O'\\''Brien'" "$tmp/reuse.again" || fail "single quote was not POSIX-serialized"
 
-# Expired, byte-identical evidence is replaced atomically and invalidates the
-# old durable digest while retaining a single canonical filename.
-old_reference=$reference
-ruby - "$root" "$vault" "$topic" "$artifact" "$report_due" <<'RUBY'
+  # Expired, byte-identical evidence is replaced atomically and invalidates the
+  # old durable digest while retaining a single canonical filename.
+  old_reference=$reference
+  ruby - "$root" "$vault" "$topic" "$artifact" "$report_due" <<'RUBY'
 repo, vault, topic, path, due = ARGV
 require File.join(repo, "scripts/lib-owner-confirmation")
 record = OwnerConfirmation.load_proposal_record(path: File.join(vault, "45_ai-systems/self-growth/proposals", "#{topic}.md"))
@@ -298,10 +312,11 @@ require File.join(repo, "scripts/lib-owner-confirmation")
 print OwnerConfirmation.build_owner_confirmation_reference(topic_key: topic, proposal_attempt: 1, bytes: File.binread(path))
 RUBY
 )
-pty_issue GO "backup O'Brien" "latency p95" "$report_due" "" "$tmp/reuse.replace" || fail "expired replacement failed"
-new_reference=$(reference_from "$tmp/reuse.replace")
-[ "$new_reference" != "$old_reference" ] && [ "$new_reference" != "$expired_reference" ] || fail "replacement did not publish new bytes"
-[ "$(find "$(dirname "$artifact")" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 1 ] || fail "replacement retained superseded files"
+  pty_issue GO "backup O'Brien" "latency p95" "$report_due" "" "$tmp/reuse.replace" || fail "expired replacement failed"
+  new_reference=$(reference_from "$tmp/reuse.replace")
+  [ "$new_reference" != "$old_reference" ] && [ "$new_reference" != "$expired_reference" ] || fail "replacement did not publish new bytes"
+  [ "$(find "$(dirname "$artifact")" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 1 ] || fail "replacement retained superseded files"
+fi
 
 # Namespace and stale-temp conflicts are classified before any prompt.
 new_case namespace; topic=namespace__tool; write_pending_t0 "$topic"
@@ -320,25 +335,29 @@ if bash "$confirm" --vault "$vault" --topic "$topic" --decision WATCH --reason w
 fi
 grep -q 'stale-confirmation-temp' "$tmp/stale.err" || fail "stale temp token missing"
 
-# The printed quoted command round-trips a raw apostrophe and semicolon.
-new_case quote; topic=quote__tool; write_pending_t0 "$topic"
-reason="Sho's reason; literal"
-pty_issue WATCH "" "" "" "$reason" "$tmp/quote.issue" || fail "WATCH issuance failed"
-consume_command=$(sed -n 's/^Consume command: //p' "$tmp/quote.issue" | tail -n 1 | tr -d '\r')
-[ -n "$consume_command" ] || fail "quoted consume command missing"
-eval "$consume_command" >/dev/null || fail "printed consume command did not execute"
-grep -Fq "operator_reason=$reason" "$vault/45_ai-systems/self-growth/proposals/$topic.md" || fail "quoted reason did not round-trip"
+if "$pty_available"; then
+  # The printed quoted command round-trips a raw apostrophe and semicolon.
+  new_case quote; topic=quote__tool; write_pending_t0 "$topic"
+  reason="Sho's reason; literal"
+  pty_issue WATCH "" "" "" "$reason" "$tmp/quote.issue" || fail "WATCH issuance failed"
+  consume_command=$(sed -n 's/^Consume command: //p' "$tmp/quote.issue" | tail -n 1 | tr -d '\r')
+  [ -n "$consume_command" ] || fail "quoted consume command missing"
+  eval "$consume_command" >/dev/null || fail "printed consume command did not execute"
+  grep -Fq "operator_reason=$reason" "$vault/45_ai-systems/self-growth/proposals/$topic.md" || fail "quoted reason did not round-trip"
+fi
 
 # T0 eligibility is checked on every issuance, and representability failures
 # are exposed by the shared artifact builder used by Phase B.
 new_case eligibility; topic=eligibility__tool; write_pending_t0 "$topic"
-sed -i '' 's/^identity_critical: false$/identity_critical: true/' "$vault/45_ai-systems/self-growth/proposals/$topic.md"
+sed -i.bak 's/^identity_critical: false$/identity_critical: true/' "$vault/45_ai-systems/self-growth/proposals/$topic.md" &&
+  rm -f "$vault/45_ai-systems/self-growth/proposals/$topic.md.bak"
 if bash "$confirm" --vault "$vault" --topic "$topic" --decision WATCH --reason wait >"$tmp/eligibility.out" 2>"$tmp/eligibility.err"; then
   fail "ineligible T0 accepted"
 fi
 grep -q 't0-eligibility-mismatch' "$tmp/eligibility.err" || fail "T0 eligibility token missing"
 
-ruby - "$root" "$tmp/reuse/vault" reuse__tool <<'RUBY' || fail "confirmation window overflow was not rejected"
+new_case overflow; topic=overflow__tool; write_pending_t0 "$topic"
+ruby - "$root" "$vault" "$topic" <<'RUBY' || fail "confirmation window overflow was not rejected"
 repo, vault, topic = ARGV
 require File.join(repo, "scripts/lib-owner-confirmation")
 record = OwnerConfirmation.load_proposal_record(path: File.join(vault, "45_ai-systems/self-growth/proposals", "#{topic}.md"))
@@ -355,5 +374,10 @@ rescue OwnerConfirmation::Error => e
   exit(e.code == "confirmation-window-overflow" ? 0 : 1)
 end
 RUBY
+
+if ! "$pty_available"; then
+  echo "SKIP: expect not available — PTY regression coverage skipped (test-adopt-confirm.sh)"
+  exit 3
+fi
 
 echo "test-adopt-confirm.sh: PASS"
