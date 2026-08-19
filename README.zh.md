@@ -4,6 +4,7 @@
 
 [🇺🇸 English](README.md) ｜ [🇯🇵 日本語](README.ja.md) ｜ **🇨🇳 简体中文** ｜ [🇹🇭 ไทย](README.th.md)
 
+![CI](https://img.shields.io/badge/CI-not%20yet-lightgrey)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![runtime](https://img.shields.io/badge/runtime-bash%203.2%2B%20%2B%20ruby-lightgrey)
 ![platform](https://img.shields.io/badge/platform-macOS-lightgrey)
