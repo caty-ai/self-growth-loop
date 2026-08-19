@@ -11,7 +11,7 @@ trap cleanup EXIT HUP INT TERM
 fail() { echo "FAIL: $*" >&2; failures=$((failures + 1)); }
 assert_contains() { printf '%s' "$1" | grep -Fq "$2" || fail "expected [$2] in [$1]"; }
 assert_eq() { [ "$1" = "$2" ] || fail "expected [$2], got [$1]"; }
-yaml_ok() { ruby -ryaml -e 'YAML.load_file(ARGV[0])' "$1" >/dev/null 2>&1 || fail "invalid YAML: $1"; }
+yaml_ok() { ruby -ryaml -e 'YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])' "$1" >/dev/null 2>&1 || fail "invalid YAML: $1"; }
 count() { grep -c "$1" "$2" || true; }
 call() { "$tool" --vault "$temp_vault" --topic-key "$1" --title "$2" --state "$3" --proposer "$4" --url "$5" --report "$6" --actor "$4"; }
 
@@ -21,7 +21,7 @@ first=$(call "$key" x PROPOSED alpha https://first.example first.md)
 second=$(call "$key" x PROPOSED alpha 'https://second.example/a"b\q' 'second"report.md')
 record="$ledger/$key.md"
 assert_contains "$first" CREATED; assert_contains "$second" SIGHTED; yaml_ok "$record"
-ruby -ryaml -e 'd=YAML.load_file(ARGV[0]); abort unless d["source_items"][1]["url"] == "https://second.example/a\"b\\q" && d["source_items"][1]["report"] == "second\"report.md"' "$record" || fail 'quoted/backslash append was not preserved'
+ruby -ryaml -e 'd=YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]); abort unless d["source_items"][1]["url"] == "https://second.example/a\"b\\q" && d["source_items"][1]["report"] == "second\"report.md"' "$record" || fail 'quoted/backslash append was not preserved'
 call "$key" x PROPOSED alpha 'https://second.example/a"b\q' duplicate.md >/dev/null
 assert_eq "$(count '^  - url:' "$record")" 2; yaml_ok "$record"
 
@@ -115,7 +115,7 @@ call "$v2_key" 'Owner confirmation fixture' PROPOSED alpha https://owner.example
 v2_record="$ledger/$v2_key.md"
 yaml_ok "$v2_record"
 ruby -ryaml -e '
-  data = YAML.load_file(ARGV[0])
+  data = YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])
   expected = %w[
     schema topic_key title state state_entered_at risk_tier
     identity_critical tiebreak proposer executor_agent executor_model
