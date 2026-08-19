@@ -12,17 +12,47 @@ fail() { echo "test-trial-integration.sh: $*" >&2; exit 1; }
 
 # The pin moved from fable-loop-harness v1.2.0 to caty-agent-harness v0.6.0;
 # the fresh public history restarted tag numbering at v0.1.0.
-tag_oid=$(git -C "$engine_source" rev-parse -q --verify 'refs/tags/v0.6.0^{commit}') \
-  || fail "required local engine tag v0.6.0 is missing"
+expected_network_oid=b7e1be18c3fce32965c9c72ae07cacb5dea33d0b
+local_tag_oid=$(git -C "$engine_source" rev-parse -q --verify 'refs/tags/v0.6.0^{commit}' 2>/dev/null) || local_tag_oid=''
+engine=''
+engine_origin=''
+
+if [ -n "$local_tag_oid" ]; then
+  local_engine="$tmp/engine-local-v0.6.0"
+  if git clone --local --no-hardlinks "$engine_source" "$local_engine" >/dev/null 2>&1 &&
+    git -C "$local_engine" checkout --detach "$local_tag_oid" >/dev/null 2>&1; then
+    engine=$local_engine
+    engine_origin=local
+  else
+    fail "local engine clone/checkout failed for pinned tag v0.6.0"
+  fi
+fi
+
+if [ -z "$engine" ]; then
+  network_engine="$tmp/engine-network-v0.6.0"
+  if git clone --depth 1 --branch v0.6.0 https://github.com/caty-ai/caty-agent-harness.git "$network_engine" >/dev/null 2>&1; then
+    engine=$network_engine
+    engine_origin=network
+  else
+    echo "SKIP: engine source unavailable (local checkout missing, network clone failed)"
+    exit 3
+  fi
+fi
+
+tag_oid=$(git -C "$engine" rev-parse -q --verify 'refs/tags/v0.6.0^{commit}') \
+  || fail "$engine_origin engine clone is missing pinned tag v0.6.0"
 [ -n "$tag_oid" ] \
-  || fail "required local engine tag v0.6.0 is missing"
-engine="$tmp/engine-v0.6.0"
-git clone --local --no-hardlinks "$engine_source" "$engine" >/dev/null 2>&1 \
-  || fail "could not clone the local engine repository"
-git -C "$engine" checkout --detach "$tag_oid" >/dev/null 2>&1 \
-  || fail "could not check out pinned engine tag v0.6.0"
+  || fail "$engine_origin engine clone is missing pinned tag v0.6.0"
 [ "$(git -C "$engine" rev-parse HEAD)" = "$tag_oid" ] \
-  || fail "engine clone HEAD does not equal the resolved v0.6.0 tag OID"
+  || fail "engine clone HEAD does not equal its v0.6.0 tag OID"
+if [ "$engine_origin" = local ]; then
+  [ "$tag_oid" = "$local_tag_oid" ] \
+    || fail "local engine clone tag OID changed during clone"
+else
+  [ "$tag_oid" = "$expected_network_oid" ] \
+    || fail "network engine tag OID $tag_oid does not equal expected $expected_network_oid"
+fi
+echo "test-trial-integration.sh: verified v0.6.0 tag OID $tag_oid ($engine_origin source)"
 
 vault="$tmp/vault"
 workspace="$tmp/workspace"

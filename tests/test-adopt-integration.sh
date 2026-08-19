@@ -88,6 +88,18 @@ for decision in GO REJECT WATCH; do
   grep -Fq "$decision (NON-EXECUTABLE TEMPLATE): scripts/adopt-confirm.sh" "$queue" || fail "$decision confirmation template missing"
 done
 
+if ! command -v expect >/dev/null 2>&1 || ! expect <<'EXPECT' >/dev/null 2>&1
+set timeout 5
+spawn ruby -e {File.open("/dev/tty", "r+") {}}
+expect eof
+set result [wait]
+exit [lindex $result 3]
+EXPECT
+then
+  echo "SKIP: expect not available — PTY regression coverage skipped (test-adopt-integration.sh)"
+  exit 3
+fi
+
 backup="snapshot O'Brien"
 metric="queue review time"
 due=$report_due
@@ -132,7 +144,8 @@ ruby -ryaml -e '
 
 # Receipt time remains security-sampled by the consume worker; pin only this
 # fixture's observation-window start before exercising the frozen completion time.
-sed -i '' 's/^state_entered_at: .*/state_entered_at: 2026-07-21T00:00:00Z/' "$ledger/$topic.md"
+sed -i.bak 's/^state_entered_at: .*/state_entered_at: 2026-07-21T00:00:00Z/' "$ledger/$topic.md" &&
+  rm -f "$ledger/$topic.md.bak"
 printf smoke >"$tmp/smoke"
 bash "$root/scripts/adopt-complete.sh" --vault "$vault" --topic "$topic" \
   --smoke-result "$tmp/smoke" --now 2026-08-10T00:00:00Z >/dev/null || fail "complete after window failed"
