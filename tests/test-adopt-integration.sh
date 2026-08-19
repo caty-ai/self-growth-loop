@@ -144,7 +144,8 @@ ruby -ryaml -e '
 
 # Receipt time remains security-sampled by the consume worker; pin only this
 # fixture's observation-window start before exercising the frozen completion time.
-sed -i '' 's/^state_entered_at: .*/state_entered_at: 2026-07-21T00:00:00Z/' "$ledger/$topic.md"
+sed -i.bak 's/^state_entered_at: .*/state_entered_at: 2026-07-21T00:00:00Z/' "$ledger/$topic.md" &&
+  rm -f "$ledger/$topic.md.bak"
 printf smoke >"$tmp/smoke"
 bash "$root/scripts/adopt-complete.sh" --vault "$vault" --topic "$topic" \
   --smoke-result "$tmp/smoke" --now 2026-08-10T00:00:00Z >/dev/null || fail "complete after window failed"

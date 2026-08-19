@@ -12,6 +12,7 @@ fail() { echo "test-trial-integration.sh: $*" >&2; exit 1; }
 
 # The pin moved from fable-loop-harness v1.2.0 to caty-agent-harness v0.6.0;
 # the fresh public history restarted tag numbering at v0.1.0.
+expected_network_oid=b7e1be18c3fce32965c9c72ae07cacb5dea33d0b
 local_tag_oid=$(git -C "$engine_source" rev-parse -q --verify 'refs/tags/v0.6.0^{commit}' 2>/dev/null) || local_tag_oid=''
 engine=''
 engine_origin=''
@@ -22,6 +23,8 @@ if [ -n "$local_tag_oid" ]; then
     git -C "$local_engine" checkout --detach "$local_tag_oid" >/dev/null 2>&1; then
     engine=$local_engine
     engine_origin=local
+  else
+    fail "local engine clone/checkout failed for pinned tag v0.6.0"
   fi
 fi
 
@@ -45,6 +48,9 @@ tag_oid=$(git -C "$engine" rev-parse -q --verify 'refs/tags/v0.6.0^{commit}') \
 if [ "$engine_origin" = local ]; then
   [ "$tag_oid" = "$local_tag_oid" ] \
     || fail "local engine clone tag OID changed during clone"
+else
+  [ "$tag_oid" = "$expected_network_oid" ] \
+    || fail "network engine tag OID $tag_oid does not equal expected $expected_network_oid"
 fi
 echo "test-trial-integration.sh: verified v0.6.0 tag OID $tag_oid ($engine_origin source)"
 

@@ -4,7 +4,8 @@ set -u
 
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/test-run.XXXXXX") || exit 1
-trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+trap 'rm -rf "$tmp"' EXIT
+trap 'exit 130' HUP INT TERM
 passed=0
 failed=0
 skipped=0
@@ -33,5 +34,5 @@ done
 
 executed=$((passed + failed))
 echo "Summary: $passed passed, $failed failed, $skipped skipped"
-echo "declared=$declared executed=$executed skipped=$skipped"
+echo "suites: declared=$declared executed=$executed skipped=$skipped"
 [ "$failed" -eq 0 ]

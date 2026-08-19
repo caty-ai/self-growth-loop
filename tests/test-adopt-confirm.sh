@@ -349,7 +349,8 @@ fi
 # T0 eligibility is checked on every issuance, and representability failures
 # are exposed by the shared artifact builder used by Phase B.
 new_case eligibility; topic=eligibility__tool; write_pending_t0 "$topic"
-sed -i '' 's/^identity_critical: false$/identity_critical: true/' "$vault/45_ai-systems/self-growth/proposals/$topic.md"
+sed -i.bak 's/^identity_critical: false$/identity_critical: true/' "$vault/45_ai-systems/self-growth/proposals/$topic.md" &&
+  rm -f "$vault/45_ai-systems/self-growth/proposals/$topic.md.bak"
 if bash "$confirm" --vault "$vault" --topic "$topic" --decision WATCH --reason wait >"$tmp/eligibility.out" 2>"$tmp/eligibility.err"; then
   fail "ineligible T0 accepted"
 fi
