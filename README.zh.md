@@ -69,7 +69,7 @@ flowchart LR
 | 操作系统 | macOS | ✅ 已测试（系统自带 bash 3.2 + 系统 ruby，无需 gem） |
 | | Linux | ⚠️ 未经测试 |
 | 独立使用 | 无需其他依赖 | 账本、巡检、队列报告仅凭本仓库即可运行 |
-| 试运行 | 本地检出的 [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) | 负责执行试运行任务的引擎（锁定版本：v0.2.0） |
+| 试运行 | 本地检出的 [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) | 负责执行试运行任务的引擎（锁定版本：v0.6.0） |
 
 ---
 

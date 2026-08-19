@@ -5,7 +5,7 @@ Per [plugin-convention.md](https://github.com/caty-ai/caty-agent-harness/blob/ma
 ## Engine pin
 
 ```
-HARNESS_VERSION=v0.2.0
+HARNESS_VERSION=v0.6.0
 ```
 
 Tag lineage: `v1.2.0` was the numbering of the engine's private pre-release predecessor; caty-agent-harness is a fresh public history whose tags restarted at `v0.x`.
@@ -52,7 +52,7 @@ Moving the workspace means flipping three independently-deployed paths (poll env
 
 ## Integration test
 
-Required by convention rule 2: `tests/test-trial-integration.sh` runs the real `tr-enqueue` and `task-runner.sh` from the pinned `v0.2.0` tag against a temporary workspace. **Status: shipped.** The test clones the local engine repository and never writes to its working tree.
+Required by convention rule 2: `tests/test-trial-integration.sh` runs the real `tr-enqueue` and `task-runner.sh` from the pinned `v0.6.0` tag against a temporary workspace. **Status: shipped.** The test clones the local engine repository and never writes to its working tree.
 
 ### Workspace pause contract
 

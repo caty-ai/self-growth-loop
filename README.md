@@ -69,7 +69,7 @@ One proposal's life: a feed item ("tool X looks useful") becomes a ledger record
 | OS | macOS | ✅ tested (stock bash 3.2 + system ruby, no gems) |
 | | Linux | ⚠️ untested |
 | Standalone use | nothing else | ledger + lint + queue report work with just this repo |
-| Trials | a local checkout of [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) | the engine that runs trial tasks (pinned: v0.2.0) |
+| Trials | a local checkout of [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) | the engine that runs trial tasks (pinned: v0.6.0) |
 
 ---
 

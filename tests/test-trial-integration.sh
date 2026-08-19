@@ -10,26 +10,26 @@ trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 
 fail() { echo "test-trial-integration.sh: $*" >&2; exit 1; }
 
-# The pin moved from fable-loop-harness v1.2.0 to caty-agent-harness v0.2.0;
+# The pin moved from fable-loop-harness v1.2.0 to caty-agent-harness v0.6.0;
 # the fresh public history restarted tag numbering at v0.1.0.
-tag_oid=$(git -C "$engine_source" rev-parse -q --verify 'refs/tags/v0.2.0^{commit}') \
-  || fail "required local engine tag v0.2.0 is missing"
+tag_oid=$(git -C "$engine_source" rev-parse -q --verify 'refs/tags/v0.6.0^{commit}') \
+  || fail "required local engine tag v0.6.0 is missing"
 [ -n "$tag_oid" ] \
-  || fail "required local engine tag v0.2.0 is missing"
-engine="$tmp/engine-v0.2.0"
+  || fail "required local engine tag v0.6.0 is missing"
+engine="$tmp/engine-v0.6.0"
 git clone --local --no-hardlinks "$engine_source" "$engine" >/dev/null 2>&1 \
   || fail "could not clone the local engine repository"
 git -C "$engine" checkout --detach "$tag_oid" >/dev/null 2>&1 \
-  || fail "could not check out pinned engine tag v0.2.0"
+  || fail "could not check out pinned engine tag v0.6.0"
 [ "$(git -C "$engine" rev-parse HEAD)" = "$tag_oid" ] \
-  || fail "engine clone HEAD does not equal the resolved v0.2.0 tag OID"
+  || fail "engine clone HEAD does not equal the resolved v0.6.0 tag OID"
 
 vault="$tmp/vault"
 workspace="$tmp/workspace"
 ledger="$vault/45_ai-systems/self-growth/proposals"
 mkdir -p "$ledger" "$workspace"
 "$engine/scripts/loop-init" --workspace "$workspace" >/dev/null 2>&1 \
-  || fail "could not initialize the trial workspace with pinned engine v0.2.0"
+  || fail "could not initialize the trial workspace with pinned engine v0.6.0"
 
 write_record() {
   topic=$1

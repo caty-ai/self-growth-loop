@@ -69,7 +69,7 @@ flowchart LR
 | OS | macOS | ✅ ทดสอบแล้ว (bash 3.2 มาตรฐาน + system ruby ไม่ต้องใช้ gems) |
 | | Linux | ⚠️ ยังไม่ได้ทดสอบ |
 | การใช้แบบสแตนด์อโลน | ไม่ต้องมีอะไรเพิ่ม | ledger + lint + queue report ทำงานได้ด้วยรีโปนี้เพียงอย่างเดียว |
-| การทดลอง | โคลนของ [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) ในเครื่อง | engine ที่ใช้รันงานทดลอง (ปักหมุดไว้ที่: v0.2.0) |
+| การทดลอง | โคลนของ [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) ในเครื่อง | engine ที่ใช้รันงานทดลอง (ปักหมุดไว้ที่: v0.6.0) |
 
 ---
 
