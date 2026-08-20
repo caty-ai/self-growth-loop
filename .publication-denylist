@@ -1,0 +1,3 @@
+# Policy (a): committed patterns are public-safe and contain no secret values.
+tailscale-ip	\b100\.(?:6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.\d{1,3}\.\d{1,3}\b
+home-path	/Users/shojikumaru
