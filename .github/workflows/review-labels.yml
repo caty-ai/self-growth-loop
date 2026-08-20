@@ -1,0 +1,34 @@
+name: Risk Review Gate
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review]
+permissions: {contents: read}
+concurrency: {group: 'risk-review-${{ github.event.pull_request.number }}', cancel-in-progress: true}
+jobs:
+  risk-review-gate:
+    uses: caty-ai/family-dev-handbook/.github/workflows/reusable-review-labels.yml@ci-v1
+    permissions: {contents: read, issues: read, pull-requests: write}
+    with:
+      risk_paths_billing: 'none'
+      risk_paths_outbound: 'none'
+      # Owner-approval + council enforcement core, its lock/identity substrate, the ledger
+      # writers, and the CI gate body (tests/** — what `make test` actually executes; the
+      # reusable's DEFAULT net covers Makefile/scripts/ci but this repo's runner lives in tests/).
+      # Panel-reviewed list (PR #35 r1: GLM F1/F2/F3, Kimi, Grok converged).
+      risk_paths_gates: |-
+        scripts/lib-owner-confirmation.rb
+        scripts/lib-adopt.sh
+        scripts/lib-council-identity.rb
+        scripts/adopt-confirm.sh
+        scripts/adopt-approve.sh
+        scripts/adopt-update.rb
+        scripts/adopt-reconcile.sh
+        scripts/council-quorum.sh
+        scripts/council-convene.sh
+        scripts/council-record.sh
+        scripts/growth-lint.rb
+        scripts/growth-lint.sh
+        tests/**
+      # No authentication code in this repo (local CLI, no credentials layer) — confirmation
+      # record: issue #17 WIP declaration. The standing AUTH dead-pattern warning is expected (spec).
+      risk_paths_auth: 'none'
