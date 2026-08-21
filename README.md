@@ -6,10 +6,10 @@
 
 ![Family OS ecosystem map with the Self Growth Loop node highlighted: improvement proposals cycle through sense, propose, trial, council, and adopt — usable standalone, and every adoption passes explicit human approval.](assets/readme/hero.png)
 
-![CI](https://img.shields.io/badge/CI-not%20yet-lightgrey)
+[![Test + Lint](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml/badge.svg)](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![runtime](https://img.shields.io/badge/runtime-bash%203.2%2B%20%2B%20ruby-lightgrey)
-![platform](https://img.shields.io/badge/platform-macOS-lightgrey)
+![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
 
 Your AI keeps suggesting improvements to its own setup — new tools, better prompts, workflow tweaks.<br>
 Adopting them by hand doesn't scale; letting the AI change things by itself is how setups get quietly broken.<br>
@@ -154,10 +154,10 @@ Every ✅ row ships with tests — run them with `make test`; the suite includes
 
 ## Project status
 
-- **CI:** Not yet. The shared test-and-lint caller arrives with [#16](https://github.com/caty-ai/self-growth-loop/issues/16) (B6), gated on [family-dev-handbook#80](https://github.com/caty-ai/family-dev-handbook/issues/80); until then, the header badge stays grey and `make test` is the local gate.
-- **Verified environments:** macOS (bash 3.2+, system ruby); the full suite passes locally. No other OS has been verified.
-- **Maturity:** **reference** — campaign-designated for this repository; formal publication-gate wiring lands with [#12](https://github.com/caty-ai/self-growth-loop/issues/12) (B9).
-- **Known constraints:** There is no CI yet; tests are verified only on macOS; ruby is required (entry scripts exit 127 without it); engine integration is pinned to [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0).
+- **CI:** Every pull request runs the shared test-and-lint caller on Ubuntu and macOS, plus gitleaks, history-check, PR-size, publication-gate and risk-review. `main` requires all eight checks. `make test` remains the local gate.
+- **Verified environments:** macOS and Ubuntu (bash 3.2+, system ruby) — both are exercised by CI on every pull request. No other OS has been verified.
+- **Maturity:** **reference** — campaign-designated for this repository. Publication-gate wiring is in place.
+- **Known constraints:** ruby is required (entry scripts exit 127 without it); engine integration is pinned to [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0).
 
 ---
 

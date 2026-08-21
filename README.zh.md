@@ -154,10 +154,10 @@ make test                  # 完整测试套件；其中的引擎集成测试会
 
 ## 项目状态
 
-- **CI:** 尚未配置。共享的 test/lint caller 将在 [#16](https://github.com/caty-ai/self-growth-loop/issues/16)（B6）中加入，并受 [family-dev-handbook#80](https://github.com/caty-ai/family-dev-handbook/issues/80) 阻塞；在此之前，页首徽章保持灰色，`make test` 是本地准入门槛。
-- **已验证环境:** macOS（bash 3.2+、系统自带的 ruby）；完整测试套件已在本地通过。其他操作系统尚未验证。
-- **成熟度:** **reference** — 这是本仓库的活动指定级别；正式的发布门禁接线将在 [#12](https://github.com/caty-ai/self-growth-loop/issues/12)（B9）中落地。
-- **已知限制:** 目前没有 CI；测试仅在 macOS 上验证；ruby 是必需依赖（缺少时入口脚本会以 127 退出）；引擎集成锁定到 [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0)。
+- **CI:** 每个 pull request 都会在 Ubuntu 和 macOS 上运行共享的 test/lint caller，同时运行 gitleaks、history-check、PR 体积、发布门禁与风险评审；`main` 要求这八项检查全部通过。`make test` 仍然是本地准入门槛。
+- **已验证环境:** macOS 与 Ubuntu（bash 3.2+、系统自带的 ruby）；两者都会在每个 pull request 中由 CI 运行。其他操作系统尚未验证。
+- **成熟度:** **reference** — 这是本仓库的活动指定级别；发布门禁接线已经落地。
+- **已知限制:** ruby 是必需依赖（缺少时入口脚本会以 127 退出）；引擎集成锁定到 [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0)。
 
 ---
 

@@ -154,10 +154,10 @@ make test                  # ชุดทดสอบทั้งหมด; engi
 
 ## สถานะโครงการ
 
-- **CI:** ยังไม่มี โดยจะเพิ่ม test/lint caller ที่ใช้ร่วมกันใน [#16](https://github.com/caty-ai/self-growth-loop/issues/16) (B6) ซึ่งรอ [family-dev-handbook#80](https://github.com/caty-ai/family-dev-handbook/issues/80) ระหว่างนี้ป้ายสถานะในส่วนหัวยังคงเป็นสีเทา และ `make test` คือด่านตรวจสอบในเครื่อง
-- **สภาพแวดล้อมที่ตรวจสอบแล้ว:** macOS (bash 3.2+, system ruby) ชุดทดสอบเต็มผ่านในเครื่อง ยังไม่ได้ตรวจสอบระบบปฏิบัติการอื่น
-- **ระดับความพร้อม:** **reference** — เป็นระดับที่แคมเปญกำหนดให้รีโปนี้ ส่วนการเชื่อมต่อด่านการเผยแพร่อย่างเป็นทางการจะเข้ามาใน [#12](https://github.com/caty-ai/self-growth-loop/issues/12) (B9)
-- **ข้อจำกัดที่ทราบ:** ยังไม่มี CI; ยืนยันการทดสอบเฉพาะบน macOS; ต้องมี ruby (หากไม่มี สคริปต์ทางเข้าจะจบด้วยรหัส 127); การเชื่อมต่อ engine ถูกปักหมุดที่ [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0)
+- **CI:** ทุก pull request จะรัน test/lint caller ที่ใช้ร่วมกันทั้งบน Ubuntu และ macOS พร้อมกับ gitleaks, history-check, PR size, publication gate และ risk review โดย `main` กำหนดให้ทั้งแปดรายการต้องผ่าน ส่วน `make test` ยังคงเป็นด่านตรวจสอบในเครื่อง
+- **สภาพแวดล้อมที่ตรวจสอบแล้ว:** macOS และ Ubuntu (bash 3.2+, system ruby) ทั้งสองถูกรันโดย CI ในทุก pull request ยังไม่ได้ตรวจสอบระบบปฏิบัติการอื่น
+- **ระดับความพร้อม:** **reference** — เป็นระดับที่แคมเปญกำหนดให้รีโปนี้ ส่วนการเชื่อมต่อด่านการเผยแพร่ได้ติดตั้งเรียบร้อยแล้ว
+- **ข้อจำกัดที่ทราบ:** ต้องมี ruby (หากไม่มี สคริปต์ทางเข้าจะจบด้วยรหัส 127); การเชื่อมต่อ engine ถูกปักหมุดที่ [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0)
 
 ---
 

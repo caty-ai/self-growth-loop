@@ -154,10 +154,10 @@ make test                  # 全テストスイート。エンジン統合テス
 
 ## プロジェクトの状況
 
-- **CI:** まだありません。共有 test/lint caller は [#16](https://github.com/caty-ai/self-growth-loop/issues/16)（B6）で導入予定で、[family-dev-handbook#80](https://github.com/caty-ai/family-dev-handbook/issues/80) の完了待ちです。それまでヘッダーバッジはグレーのままで、`make test` がローカルのゲートです。
-- **検証済み環境:** macOS（bash 3.2+、システムの ruby）。フルスイートはローカルで成功しています。その他の OS は未検証です。
-- **成熟度:** **reference** — このリポジトリに対するキャンペーン指定です。正式な公開ゲートの配線は [#12](https://github.com/caty-ai/self-growth-loop/issues/12)（B9）で導入されます。
-- **既知の制約:** CI はまだなく、テストの検証は macOS のみです。ruby は必須で、ない場合はエントリースクリプトが 127 で終了します。エンジン統合は [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0) に固定されています。
+- **CI:** すべての pull request で、共有の test/lint caller が Ubuntu と macOS の両方で走ります。あわせて gitleaks・history-check・PR サイズ・公開ゲート・リスクレビューも走り、`main` はこの8つすべてを必須にしています。`make test` は引き続きローカルのゲートです。
+- **検証済み環境:** macOS と Ubuntu（bash 3.2+、システムの ruby）。どちらも pull request ごとに CI で実行されています。その他の OS は未検証です。
+- **成熟度:** **reference** — このリポジトリに対するキャンペーン指定です。公開ゲートの配線は導入済みです。
+- **既知の制約:** ruby は必須で、ない場合はエントリースクリプトが 127 で終了します。エンジン統合は [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0) に固定されています。
 
 ---
 
