@@ -6,10 +6,10 @@
 
 ![Family OS ecosystem map with the Self Growth Loop node highlighted: improvement proposals cycle through sense, propose, trial, council, and adopt — usable standalone, and every adoption passes explicit human approval.](assets/readme/hero.png)
 
-![CI](https://img.shields.io/badge/CI-not%20yet-lightgrey)
+[![Test + Lint](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml/badge.svg)](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![runtime](https://img.shields.io/badge/runtime-bash%203.2%2B%20%2B%20ruby-lightgrey)
-![platform](https://img.shields.io/badge/platform-macOS-lightgrey)
+![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
 
 AI ของคุณมักจะเสนอไอเดียปรับปรุงการตั้งค่าของตัวเองอยู่เรื่อย ๆ — เครื่องมือใหม่ พรอมป์ที่ดีขึ้น การปรับ workflow<br>
 การนำไอเดียเหล่านั้นมาใช้เองด้วยมือนั้นขยายผลไม่ได้ ส่วนการปล่อยให้ AI เปลี่ยนแปลงสิ่งต่าง ๆ เองก็มักจะทำให้การตั้งค่าพังไปเงียบ ๆ<br>
@@ -154,10 +154,10 @@ make test                  # ชุดทดสอบทั้งหมด; engi
 
 ## สถานะโครงการ
 
-- **CI:** ยังไม่มี โดยจะเพิ่ม test/lint caller ที่ใช้ร่วมกันใน [#16](https://github.com/caty-ai/self-growth-loop/issues/16) (B6) ซึ่งรอ [family-dev-handbook#80](https://github.com/caty-ai/family-dev-handbook/issues/80) ระหว่างนี้ป้ายสถานะในส่วนหัวยังคงเป็นสีเทา และ `make test` คือด่านตรวจสอบในเครื่อง
-- **สภาพแวดล้อมที่ตรวจสอบแล้ว:** macOS (bash 3.2+, system ruby) ชุดทดสอบเต็มผ่านในเครื่อง ยังไม่ได้ตรวจสอบระบบปฏิบัติการอื่น
-- **ระดับความพร้อม:** **reference** — เป็นระดับที่แคมเปญกำหนดให้รีโปนี้ ส่วนการเชื่อมต่อด่านการเผยแพร่อย่างเป็นทางการจะเข้ามาใน [#12](https://github.com/caty-ai/self-growth-loop/issues/12) (B9)
-- **ข้อจำกัดที่ทราบ:** ยังไม่มี CI; ยืนยันการทดสอบเฉพาะบน macOS; ต้องมี ruby (หากไม่มี สคริปต์ทางเข้าจะจบด้วยรหัส 127); การเชื่อมต่อ engine ถูกปักหมุดที่ [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0)
+- **CI:** ทุก pull request จะรัน test/lint caller ที่ใช้ร่วมกันทั้งบน Ubuntu และ macOS พร้อมกับ gitleaks, history-check, PR size, publication gate และ risk review โดย `main` กำหนดให้ทั้งแปดรายการต้องผ่าน ส่วน `make test` ยังคงเป็นด่านตรวจสอบในเครื่อง
+- **สภาพแวดล้อมที่ตรวจสอบแล้ว:** macOS และ Ubuntu (bash 3.2+, system ruby) ทั้งสองถูกรันโดย CI ในทุก pull request ยังไม่ได้ตรวจสอบระบบปฏิบัติการอื่น
+- **ระดับความพร้อม:** **reference** — เป็นระดับที่แคมเปญกำหนดให้รีโปนี้ ส่วนการเชื่อมต่อด่านการเผยแพร่ได้ติดตั้งเรียบร้อยแล้ว
+- **ข้อจำกัดที่ทราบ:** ต้องมี ruby (หากไม่มี สคริปต์ทางเข้าจะจบด้วยรหัส 127); การเชื่อมต่อ engine ถูกปักหมุดที่ [caty-agent-harness v0.6.0](https://github.com/caty-ai/caty-agent-harness/tree/v0.6.0)
 
 ---
 
