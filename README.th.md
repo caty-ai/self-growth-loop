@@ -6,10 +6,10 @@
 
 ![Family OS ecosystem map with the Self Growth Loop node highlighted: improvement proposals cycle through sense, propose, trial, council, and adopt — usable standalone, and every adoption passes explicit human approval.](assets/readme/hero.png)
 
-![CI](https://img.shields.io/badge/CI-not%20yet-lightgrey)
+[![Test + Lint](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml/badge.svg)](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![runtime](https://img.shields.io/badge/runtime-bash%203.2%2B%20%2B%20ruby-lightgrey)
-![platform](https://img.shields.io/badge/platform-macOS-lightgrey)
+![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
 
 AI ของคุณมักจะเสนอไอเดียปรับปรุงการตั้งค่าของตัวเองอยู่เรื่อย ๆ — เครื่องมือใหม่ พรอมป์ที่ดีขึ้น การปรับ workflow<br>
 การนำไอเดียเหล่านั้นมาใช้เองด้วยมือนั้นขยายผลไม่ได้ ส่วนการปล่อยให้ AI เปลี่ยนแปลงสิ่งต่าง ๆ เองก็มักจะทำให้การตั้งค่าพังไปเงียบ ๆ<br>

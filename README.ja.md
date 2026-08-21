@@ -6,10 +6,10 @@
 
 ![Family OS ecosystem map with the Self Growth Loop node highlighted: improvement proposals cycle through sense, propose, trial, council, and adopt — usable standalone, and every adoption passes explicit human approval.](assets/readme/hero.png)
 
-![CI](https://img.shields.io/badge/CI-not%20yet-lightgrey)
+[![Test + Lint](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml/badge.svg)](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![runtime](https://img.shields.io/badge/runtime-bash%203.2%2B%20%2B%20ruby-lightgrey)
-![platform](https://img.shields.io/badge/platform-macOS-lightgrey)
+![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
 
 あなたのAIは、自分自身のセットアップに対する改善案を次々と提案してきます——新しいツール、より良いプロンプト、ワークフローの微調整。<br>
 それを手作業で取り込むのはスケールしませんし、かといってAIに勝手に変更させると、セットアップが気づかないうちに壊れていきます。<br>

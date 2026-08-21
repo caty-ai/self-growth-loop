@@ -6,10 +6,10 @@
 
 ![Family OS ecosystem map with the Self Growth Loop node highlighted: improvement proposals cycle through sense, propose, trial, council, and adopt — usable standalone, and every adoption passes explicit human approval.](assets/readme/hero.png)
 
-![CI](https://img.shields.io/badge/CI-not%20yet-lightgrey)
+[![Test + Lint](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml/badge.svg)](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![runtime](https://img.shields.io/badge/runtime-bash%203.2%2B%20%2B%20ruby-lightgrey)
-![platform](https://img.shields.io/badge/platform-macOS-lightgrey)
+![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
 
 你的 AI 一直在给自己的运行环境提出改进建议——新工具、更好的提示词、工作流调整。<br>
 手动逐一采纳这些建议无法规模化；而放手让 AI 自行修改，环境往往在不知不觉中就被弄坏了。<br>
