@@ -20,6 +20,9 @@ self-growth-loopは、すべての提案を「テスト」「リスクに応じ�
 🔧 [エンジニアリングガイド](INTEGRATION.md) ｜ 📘 [仕様書](docs/ledger-spec.md)
 
 </div>
+<!-- repo-state:begin (generated; do not edit) -->
+<p align="center"><sub>generation: <code>981c3cc</code> (2026-08-25T15:11:33Z) · verify: <a href="https://api.github.com/repos/caty-ai/self-growth-loop/commits/feat/repo-state-caller-45">API HEAD</a> · <a href="./status.json">status.json</a></sub></p>
+<!-- repo-state:end -->
 
 ---
 

@@ -20,6 +20,9 @@ self-growth-loop เปลี่ยนทุกข้อเสนอให้ก
 🔧 [คู่มือวิศวกรรม](INTEGRATION.md) ｜ 📘 [ข้อกำหนดเชิงเทคนิค](docs/ledger-spec.md)
 
 </div>
+<!-- repo-state:begin (generated; do not edit) -->
+<p align="center"><sub>generation: <code>981c3cc</code> (2026-08-25T15:11:33Z) · verify: <a href="https://api.github.com/repos/caty-ai/self-growth-loop/commits/feat/repo-state-caller-45">API HEAD</a> · <a href="./status.json">status.json</a></sub></p>
+<!-- repo-state:end -->
 
 ---
 
