@@ -9,7 +9,7 @@
 [![Test + Lint](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml/badge.svg)](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![runtime](https://img.shields.io/badge/runtime-bash%203.2%2B%20%2B%20ruby-lightgrey)
-![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
+![platform](https://img.shields.io/badge/platform-macOS%20%E2%9C%85%20%7C%20Linux%20%E2%9C%85%20CI%20tested-lightgrey)
 
 AI ของคุณมักจะเสนอไอเดียปรับปรุงการตั้งค่าของตัวเองอยู่เรื่อย ๆ — เครื่องมือใหม่ พรอมป์ที่ดีขึ้น การปรับ workflow<br>
 การนำไอเดียเหล่านั้นมาใช้เองด้วยมือนั้นขยายผลไม่ได้ ส่วนการปล่อยให้ AI เปลี่ยนแปลงสิ่งต่าง ๆ เองก็มักจะทำให้การตั้งค่าพังไปเงียบ ๆ<br>
@@ -72,7 +72,8 @@ flowchart LR
 | | ข้อกำหนด | หมายเหตุ |
 |---|---|---|
 | OS | macOS | ✅ ทดสอบแล้ว (bash 3.2 มาตรฐาน + system ruby ไม่ต้องใช้ gems) |
-| | Linux | ⚠️ ยังไม่ได้ทดสอบ |
+| | Linux | ✅ ผ่านการทดสอบใน CI |
+| | WSL2 | ✅ มีข้อควรระวัง — ดู [Linux / WSL2 scheduling](INTEGRATION.md#linux--wsl2-scheduling) |
 | การใช้แบบสแตนด์อโลน | ไม่ต้องมีอะไรเพิ่ม | ledger + lint + queue report ทำงานได้ด้วยรีโปนี้เพียงอย่างเดียว |
 | การทดลอง | โคลนของ [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) ในเครื่อง | engine ที่ใช้รันงานทดลอง (ปักหมุดไว้ที่: v0.6.0) |
 
@@ -136,7 +137,7 @@ make test                  # ชุดทดสอบทั้งหมด; engi
 ## แบบสแตนด์อโลนหรือแบบเชื่อมต่อ
 
 - **สแตนด์อโลน** — รีโปนี้บวกกับไดเรกทอรีสำหรับบัญชี เสนอ ตรวจสอบด้วย lint และรีวิวด้วยมือ (นี่คือสิ่งที่ Quickstart ด้านบนทำ)
-- **เชื่อมต่อ** — เชื่อมเข้ากับระบบที่กว้างขึ้น ทุกอย่างเป็นตัวเลือกเสริม: ตัวรวบรวมฟีดที่ป้อนไอเดีย (sense — เช่น [X Collector](https://github.com/caty-ai/x-collector)), engine [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) ที่รันการทดลอง, launchd cron สำหรับ lint ประจำวัน (`ops/`, วิธีติดตั้งอยู่ใน [INTEGRATION.md](INTEGRATION.md)) และสัญญาณ dead-man heartbeat หากคุณมีระบบมอนิเตอร์ภายนอก
+- **เชื่อมต่อ** — เชื่อมเข้ากับระบบที่กว้างขึ้น ทุกอย่างเป็นตัวเลือกเสริม: ตัวรวบรวมฟีดที่ป้อนไอเดีย (sense — เช่น [X Collector](https://github.com/caty-ai/x-collector)), engine [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) ที่รันการทดลอง, launchd หรือ Linux systemd/cron สำหรับรัน wrapper ตามเวลา (`ops/`, วิธีติดตั้งอยู่ใน [INTEGRATION.md](INTEGRATION.md)) และสัญญาณ dead-man heartbeat หากคุณมีระบบมอนิเตอร์ภายนอก
 
 ---
 

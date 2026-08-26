@@ -9,7 +9,7 @@
 [![Test + Lint](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml/badge.svg)](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![runtime](https://img.shields.io/badge/runtime-bash%203.2%2B%20%2B%20ruby-lightgrey)
-![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
+![platform](https://img.shields.io/badge/platform-macOS%20%E2%9C%85%20%7C%20Linux%20%E2%9C%85%20CI%20tested-lightgrey)
 
 Your AI keeps suggesting improvements to its own setup — new tools, better prompts, workflow tweaks.<br>
 Adopting them by hand doesn't scale; letting the AI change things by itself is how setups get quietly broken.<br>
@@ -72,7 +72,8 @@ One proposal's life: a feed item ("tool X looks useful") becomes a ledger record
 | | Requirement | Notes |
 |---|---|---|
 | OS | macOS | ✅ tested (stock bash 3.2 + system ruby, no gems) |
-| | Linux | ⚠️ untested |
+| | Linux | ✅ CI tested |
+| | WSL2 | ✅ with caveats — see [Linux / WSL2 scheduling](INTEGRATION.md#linux--wsl2-scheduling) |
 | Standalone use | nothing else | ledger + lint + queue report work with just this repo |
 | Trials | a local checkout of [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) | the engine that runs trial tasks (pinned: v0.6.0) |
 
@@ -136,7 +137,7 @@ Not for you if: you want a fully-automatic self-improving agent with no human in
 ## Standalone or connected
 
 - **Standalone** — this repo + a directory for the ledger. Propose, lint, and review by hand. (That's what the Quickstart above does.)
-- **Connected** — plug into a wider setup, all optional: a feed collector supplying ideas (sense — e.g. [X Collector](https://github.com/caty-ai/x-collector)), the [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) engine running trials, launchd cron for the daily lint (`ops/`, install note in [INTEGRATION.md](INTEGRATION.md)), and a dead-man heartbeat if you have external monitoring.
+- **Connected** — plug into a wider setup, all optional: a feed collector supplying ideas (sense — e.g. [X Collector](https://github.com/caty-ai/x-collector)), the [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) engine running trials, launchd or Linux systemd/cron scheduling for the wrappers (`ops/`, install note in [INTEGRATION.md](INTEGRATION.md)), and a dead-man heartbeat if you have external monitoring.
 
 ---
 

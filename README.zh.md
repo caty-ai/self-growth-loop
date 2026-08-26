@@ -9,7 +9,7 @@
 [![Test + Lint](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml/badge.svg)](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![runtime](https://img.shields.io/badge/runtime-bash%203.2%2B%20%2B%20ruby-lightgrey)
-![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
+![platform](https://img.shields.io/badge/platform-macOS%20%E2%9C%85%20%7C%20Linux%20%E2%9C%85%20CI%20tested-lightgrey)
 
 你的 AI 一直在给自己的运行环境提出改进建议——新工具、更好的提示词、工作流调整。<br>
 手动逐一采纳这些建议无法规模化；而放手让 AI 自行修改，环境往往在不知不觉中就被弄坏了。<br>
@@ -72,7 +72,8 @@ flowchart LR
 | | 要求 | 说明 |
 |---|---|---|
 | 操作系统 | macOS | ✅ 已测试（系统自带 bash 3.2 + 系统 ruby，无需 gem） |
-| | Linux | ⚠️ 未经测试 |
+| | Linux | ✅ 已通过 CI 测试 |
+| | WSL2 | ✅ 有注意事项 — 见 [Linux / WSL2 scheduling](INTEGRATION.md#linux--wsl2-scheduling) |
 | 独立使用 | 无需其他依赖 | 账本、巡检、队列报告仅凭本仓库即可运行 |
 | 试运行 | 本地检出的 [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) | 负责执行试运行任务的引擎（锁定版本：v0.6.0） |
 
@@ -136,7 +137,7 @@ make test                  # 完整测试套件；其中的引擎集成测试会
 ## 独立使用或接入更大的体系
 
 - **独立使用** —— 本仓库 + 一个用于存放账本的目录。手动提案、巡检、评审。（上面的快速开始部分演示的正是这种方式。）
-- **接入更大体系** —— 接入更完整的运行环境，一切均为可选项：负责提供想法的信息源收集器（sense，例如 [X Collector](https://github.com/caty-ai/x-collector)）、负责运行试运行的 [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) 引擎、用于每日巡检的 launchd 定时任务（`ops/`，安装说明见 [INTEGRATION.md](INTEGRATION.md)），以及在你有外部监控的情况下可选的失活心跳检测。
+- **接入更大体系** —— 接入更完整的运行环境，一切均为可选项：负责提供想法的信息源收集器（sense，例如 [X Collector](https://github.com/caty-ai/x-collector)）、负责运行试运行的 [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) 引擎、用于定期运行 wrapper 的 launchd 或 Linux systemd/cron（`ops/`，安装说明见 [INTEGRATION.md](INTEGRATION.md)），以及在你有外部监控的情况下可选的失活心跳检测。
 
 ---
 

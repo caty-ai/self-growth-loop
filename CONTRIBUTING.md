@@ -7,7 +7,9 @@ Thanks for your interest in self-growth-loop.
 To run this repository's scripts and tests, you need:
 
 - **bash 3.2+** — macOS system bash is the supported floor.
-- **ruby** — standard library only; the scripts run with macOS system ruby. Every entry script checks for it first and exits 127 when it is unavailable.
+- **ruby** — standard library only; macOS system ruby 2.6+ and distro ruby 3.x are both exercised by CI. Every entry script checks for it first and exits 127 when it is unavailable.
+- **perl + `shasum` + `expect` + `python3`** — test-only dependencies: `perl` and `shasum` are expected on minimal distros, `expect` drives PTY confirmation suites, and `python3` runs the publication-gate checker.
+- **a UTF-8 locale** — the scheduled wrappers probe `en_US.UTF-8` first and `C.UTF-8` second; Linux hosts need at least one of them available.
 - **make** — the family-standard entry point for tests and lint.
 - **git** — for the issue-and-branch workflow below.
 
