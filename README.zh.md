@@ -21,7 +21,7 @@ self-growth-loop 把每一条建议都变成一份可追踪的提案，必须先
 
 </div>
 <!-- repo-state:begin (generated; do not edit) -->
-<p align="center"><sub>generation: <code>981c3cc</code> (2026-08-25T15:11:33Z) · verify: <a href="https://api.github.com/repos/caty-ai/self-growth-loop/commits/feat/repo-state-caller-45">API HEAD</a> · <a href="./status.json">status.json</a></sub></p>
+<p align="center"><sub>generation: <code>443676a</code> (2026-08-26T18:57:35Z) · verify: <a href="https://api.github.com/repos/caty-ai/self-growth-loop/commits/main">API HEAD</a> · <a href="./status.json">status.json</a></sub></p>
 <!-- repo-state:end -->
 
 ---
