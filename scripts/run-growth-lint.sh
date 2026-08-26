@@ -2,17 +2,47 @@
 # Cron/launchd entrypoint for growth-lint with logging and dead-man heartbeat.
 # Compatible with macOS Bash 3.2.
 set -u
-PATH=/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin
+PATH=${SGL_PATH:-/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin}
 export PATH
 if ! command -v ruby >/dev/null 2>&1; then
   echo "run-growth-lint.sh: ruby not found on PATH; install ruby to use this repo's scripts" >&2
   exit 127
 fi
 
-# launchd provides no locale; without UTF-8 the inline Ruby in the lint/poll
-# tooling parses as US-ASCII and dies on multibyte event-line characters.
-LC_ALL=en_US.UTF-8
-export LC_ALL
+# locale-select begin
+case "${LC_ALL:-}" in
+  *[Uu][Tt][Ff]-8*|*[Uu][Tt][Ff]8*)
+    ;;
+  *)
+    sgl_locale_output=$(locale -a 2>/dev/null || printf '')
+    sgl_selected_locale=''
+    while IFS= read -r sgl_locale_name; do
+      case "$sgl_locale_name" in
+        [Ee][Nn]_[Uu][Ss].[Uu][Tt][Ff]-8|[Ee][Nn]_[Uu][Ss].[Uu][Tt][Ff]8)
+          sgl_selected_locale=en_US.UTF-8
+          break
+          ;;
+      esac
+    done <<EOF
+$sgl_locale_output
+EOF
+    if [ -z "$sgl_selected_locale" ]; then
+      while IFS= read -r sgl_locale_name; do
+        case "$sgl_locale_name" in
+          [Cc].[Uu][Tt][Ff]-8|[Cc].[Uu][Tt][Ff]8)
+            sgl_selected_locale=C.UTF-8
+            break
+            ;;
+        esac
+      done <<EOF
+$sgl_locale_output
+EOF
+    fi
+    LC_ALL=${sgl_selected_locale:-C.UTF-8}
+    export LC_ALL
+    ;;
+esac
+# locale-select end
 
 if [ -z "${HOME:-}" ]; then
   echo "run-growth-lint.sh: HOME must be set" >&2

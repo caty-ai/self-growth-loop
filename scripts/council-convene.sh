@@ -10,7 +10,40 @@ fi
 ADOPT_TOOL=council-convene.sh
 # shellcheck disable=SC1091
 . "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)/lib-adopt.sh"
-case "${LC_ALL:-}" in *UTF-8*|*utf8*) ;; *) LC_ALL=en_US.UTF-8; export LC_ALL ;; esac
+# locale-select begin
+case "${LC_ALL:-}" in
+  *[Uu][Tt][Ff]-8*|*[Uu][Tt][Ff]8*)
+    ;;
+  *)
+    sgl_locale_output=$(locale -a 2>/dev/null || printf '')
+    sgl_selected_locale=''
+    while IFS= read -r sgl_locale_name; do
+      case "$sgl_locale_name" in
+        [Ee][Nn]_[Uu][Ss].[Uu][Tt][Ff]-8|[Ee][Nn]_[Uu][Ss].[Uu][Tt][Ff]8)
+          sgl_selected_locale=en_US.UTF-8
+          break
+          ;;
+      esac
+    done <<EOF
+$sgl_locale_output
+EOF
+    if [ -z "$sgl_selected_locale" ]; then
+      while IFS= read -r sgl_locale_name; do
+        case "$sgl_locale_name" in
+          [Cc].[Uu][Tt][Ff]-8|[Cc].[Uu][Tt][Ff]8)
+            sgl_selected_locale=C.UTF-8
+            break
+            ;;
+        esac
+      done <<EOF
+$sgl_locale_output
+EOF
+    fi
+    LC_ALL=${sgl_selected_locale:-C.UTF-8}
+    export LC_ALL
+    ;;
+esac
+# locale-select end
 
 usage() {
   cat >&2 <<'EOF'
