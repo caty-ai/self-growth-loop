@@ -114,38 +114,54 @@ for locale_file in $locale_files; do
 done
 [ "$locale_snippet_count" -eq 9 ] || fail "expected 9 identical locale-select snippets, found $locale_snippet_count"
 
+locale_case_count=0
 run_locale_case() {
   name=$1
   locale_output=$2
   expected=$3
+  inherited_lc_all=${4:-}
+  create_locale_stub=${5:-yes}
   stub_dir="$tmp/$name"
   mkdir -p "$stub_dir" || fail "could not create stub dir for $name"
   locale_stub="$stub_dir/locale"
-  {
-    printf '%s\n' '#!/bin/bash'
-    printf '%s\n' 'if [ "${1:-}" = "-a" ]; then'
-    printf '%s\n' "  while IFS= read -r line; do printf '%s\\n' \"\$line\"; done <<'OUT'"
-    printf '%s\n' "$locale_output"
-    printf '%s\n' 'OUT'
-    printf '%s\n' '  exit 0'
-    printf '%s\n' 'fi'
-    printf '%s\n' 'exit 2'
-  } >"$locale_stub" || fail "could not write locale stub for $name"
-  chmod +x "$locale_stub" || fail "could not chmod locale stub for $name"
+  if [ "$create_locale_stub" = yes ]; then
+    {
+      printf '%s\n' '#!/bin/bash'
+      printf '%s\n' 'if [ "${1:-}" = "-a" ]; then'
+      printf '%s\n' "  while IFS= read -r line; do printf '%s\\n' \"\$line\"; done <<'OUT'"
+      printf '%s\n' "$locale_output"
+      printf '%s\n' 'OUT'
+      printf '%s\n' '  exit 0'
+      printf '%s\n' 'fi'
+      printf '%s\n' 'exit 2'
+    } >"$locale_stub" || fail "could not write locale stub for $name"
+    chmod +x "$locale_stub" || fail "could not chmod locale stub for $name"
+  fi
 
   locale_test="$tmp/$name.sh"
   {
-    printf '%s\n' 'unset LC_ALL'
+    if [ -n "$inherited_lc_all" ]; then
+      printf 'export LC_ALL=%s\n' "$inherited_lc_all"
+    else
+      printf '%s\n' 'unset LC_ALL'
+    fi
     printf '%s\n' "$locale_snippet"
     printf '%s\n' 'printf "%s" "${LC_ALL:-}"'
   } >"$locale_test" || fail "could not write locale test for $name"
 
   selected=$(PATH="$stub_dir" /bin/bash "$locale_test") || fail "locale-select snippet failed for $name"
   [ "$selected" = "$expected" ] || fail "locale-select chose $selected instead of $expected for $name"
+  locale_case_count=$((locale_case_count + 1))
 }
 
 run_locale_case c_utf8_only 'C.utf8' 'C.UTF-8'
 run_locale_case en_us_utf8 'en_US.utf8' 'en_US.UTF-8'
 run_locale_case neither 'POSIX' 'C.UTF-8'
+run_locale_case inherited_utf8 'C.utf8' 'en_GB.UTF-8' 'en_GB.UTF-8'
+run_locale_case en_us_precedence 'C.utf8
+en_US.utf8' 'en_US.UTF-8'
+run_locale_case en_us_macos 'en_US.UTF-8' 'en_US.UTF-8'
+run_locale_case locale_absent '' 'C.UTF-8' '' no
+[ "$locale_case_count" -eq 7 ] || fail "expected 7 locale-selection cases, ran $locale_case_count"
 
-echo "test-portable-helpers.sh: PASS"
+echo "test-portable-helpers.sh: PASS ($locale_case_count locale-selection cases)"

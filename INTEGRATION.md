@@ -76,7 +76,7 @@ journalctl --user -u self-growth-growth-lint.service
 
 The journal captures wrapper warnings and unit lifecycle events. The wrappers still write the authoritative timestamped child-output logs under `~/.claude/logs/self-growth/`.
 
-The timer mapping follows the launchd intent exactly: `trial-poll` uses `OnBootSec=1h` plus `OnUnitActiveSec=1h`, and `growth-lint` uses `OnCalendar=*-*-* 07:00:00`. `Persistent=true` is intentionally omitted. If the machine is off at fire time, systemd does not replay the run later by default. Example: a VM that is only up from 09:00 to 18:00 never sees the 07:00 `growth-lint` trigger; the watchdog is the catch. Add `Persistent=true` yourself if you want power-off catch-up semantics.
+The timer mapping mirrors the launchd schedules: `trial-poll` uses `OnBootSec=1h` plus `OnUnitActiveSec=1h`, and `growth-lint` uses `OnCalendar=*-*-* 07:00:00`. `Persistent=true` is intentionally omitted. If the machine is off at fire time, systemd does not replay the run later by default. Example: a VM that is only up from 09:00 to 18:00 never sees the 07:00 `growth-lint` trigger; the watchdog is the catch. Add `Persistent=true` yourself if you want power-off catch-up semantics.
 
 WSL2 needs systemd enabled before these user timers exist:
 
