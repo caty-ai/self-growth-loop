@@ -1,0 +1,7 @@
+# Example crontab entries for self-growth-loop.
+# Cron does not catch up missed runs after downtime.
+# Uncomment and adjust if ruby or job-heartbeat live outside the wrappers' default environment.
+# SGL_PATH=/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin
+# SGL_HEARTBEAT_TOOL=/home/YOU/bin/job-heartbeat
+0 7 * * * /bin/bash "$HOME/claude-workspace/self-growth-loop/scripts/run-growth-lint.sh"
+0 * * * * /bin/bash "$HOME/claude-workspace/self-growth-loop/scripts/run-trial-poll.sh"

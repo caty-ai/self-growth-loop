@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily self-growth-loop growth-lint timer
+
+[Timer]
+Unit=self-growth-growth-lint.service
+OnCalendar=*-*-* 07:00:00
+
+[Install]
+WantedBy=timers.target
