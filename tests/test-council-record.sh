@@ -199,6 +199,8 @@ new_case nbsp; body "$case_root/go.md" GO; ruby -e 'p=ARGV[0]; s=File.read(p); F
 refuse nbsp CITATION_MALFORMED utility "$case_root/go.md"
 new_case cr; body "$case_root/go.md" GO; ruby -e 'File.binwrite(ARGV[0], "VERDICT: GO\r## Forged heading\n")' "$case_root/go.md"
 refuse cr BODY_CONTROL_CHARS utility "$case_root/go.md"
+new_case crlf; body "$case_root/go.md" GO; ruby -e 'p=ARGV[0]; s=File.binread(p); File.binwrite(p, s.sub("VERDICT: GO\n", "VERDICT: GO\r\n"))' "$case_root/go.md"
+refuse crlf BODY_CONTROL_CHARS utility "$case_root/go.md"
 
 # F8: supersession is allowed only after the unsealed row-2 report is recorded.
 new_case supersede; body "$case_root/no.md" NO-GO; invoke security "$case_root/no.md" || fail "security NO-GO failed"

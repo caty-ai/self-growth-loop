@@ -229,7 +229,6 @@ NOW="$timestamp" SUPERSEDE="$supersede" DRY_RUN="$dry_run" ruby -EUTF-8:UTF-8 -r
   def die(dir, task_id, now, code, detail, dry); violation(dir, task_id, now, code, detail, dry); exit 3; end
   def normalize_body(bytes)
     text = bytes.dup.force_encoding("UTF-8"); raise "invalid UTF-8" unless text.valid_encoding?
-    text = text.gsub("\r\n", "\n")
     raise "disallowed control character" if text.each_codepoint.any? { |c| (c < 32 && c != 9 && c != 10) || c == 127 || c == 0x2028 || c == 0x2029 }
     text
   end
