@@ -215,8 +215,12 @@ acquire_lock() {
   attempt=0
   while ! mkdir "$lock_dir" 2>/dev/null; do
     current_epoch=$(date +%s)
-    lock_mtime=$(file_mtime "$lock_dir" 2>/dev/null || printf 0)
-    if [ $((current_epoch - lock_mtime)) -gt 300 ]; then
+    if lock_mtime=$(file_mtime "$lock_dir" 2>/dev/null); then
+      case "$lock_mtime" in
+        ''|*[!0-9]*) lock_mtime_valid=0 ;;
+        *) lock_mtime_valid=1 ;;
+      esac
+      if [ "$lock_mtime_valid" -eq 1 ] && [ $((current_epoch - lock_mtime)) -gt 300 ]; then
       break_stale=0
       owner=$(cat "$lock_dir/owner" 2>/dev/null || true)
       owner_pid=''; owner_host=''; owner_tool=''; owner_extra=''
@@ -242,6 +246,7 @@ EOF
           fi
         fi
         continue
+      fi
       fi
     fi
     attempt=$((attempt + 1))

@@ -145,8 +145,12 @@ adopt_with_lock() {
       return
     fi
     current_epoch=$(date +%s)
-    lock_epoch=$(file_mtime "$lock_dir" 2>/dev/null || printf 0)
-    if [ $((current_epoch - lock_epoch)) -gt 300 ]; then
+    if lock_epoch=$(file_mtime "$lock_dir" 2>/dev/null); then
+      case "$lock_epoch" in
+        ''|*[!0-9]*) lock_epoch_valid=0 ;;
+        *) lock_epoch_valid=1 ;;
+      esac
+      if [ "$lock_epoch_valid" -eq 1 ] && [ $((current_epoch - lock_epoch)) -gt 300 ]; then
       owner_b64=$(adopt_lock_owner_base64 "$lock_dir/owner" 2>/dev/null || true)
       ownerless=0
       [ -z "$owner_b64" ] && ownerless=1
@@ -194,6 +198,7 @@ adopt_with_lock() {
           fi
           continue
         fi
+      fi
       fi
     fi
     attempt=$((attempt + 1))

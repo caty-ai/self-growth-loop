@@ -174,8 +174,13 @@ mkdir -p "$ledger_dir" || { echo "propose.sh: cannot create ledger directory" >&
 
 attempt=0
 while ! mkdir "$lock_dir" 2>/dev/null; do
-  now=$(date +%s); lock_mtime=$(file_mtime "$lock_dir" 2>/dev/null || printf 0)
-  if [ $((now - lock_mtime)) -gt 300 ]; then
+  now=$(date +%s)
+  if lock_mtime=$(file_mtime "$lock_dir" 2>/dev/null); then
+    case "$lock_mtime" in
+      ''|*[!0-9]*) lock_mtime_valid=0 ;;
+      *) lock_mtime_valid=1 ;;
+    esac
+    if [ "$lock_mtime_valid" -eq 1 ] && [ $((now - lock_mtime)) -gt 300 ]; then
     break_stale=0
     owner=$(cat "$lock_dir/owner" 2>/dev/null || true)
     owner_pid=''; owner_host=''; owner_tool=''; owner_extra=''
@@ -191,6 +196,7 @@ EOF
       rm -f "$lock_dir/owner" 2>/dev/null || true
       rmdir "$lock_dir" 2>/dev/null || { echo "propose.sh: stale lock could not be removed: $lock_dir" >&2; exit 1; }
       stale_lock_broken=1; echo "STALE_LOCK_BROKEN $lock_dir"; continue
+    fi
     fi
   fi
   attempt=$((attempt + 1))
