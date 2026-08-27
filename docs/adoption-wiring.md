@@ -150,7 +150,9 @@ remains exit 1 with the exact skipped-without-writes message
 `run-growth-lint.sh: lock busy: skipped (heartbeat ok)`. By contrast,
 `lock-quarantine-conflict` remains a fail-closed exit 3. Unequal legacy/shared
 hostname tokens fail safe by leaving the lock busy rather than treating the
-owner as breakable.
+owner as breakable. Treat that as a deployment caveat, not a bug: WSL2 clones
+and VM images can legitimately reuse or drift hostnames, so prove liveness on
+the recorded host before deciding a lock owner is breakable.
 
 Stale owner directories may be quarantined. A changed-owner quarantine is renamed to the exact preserved path `.quarantine-changed.<pid>.<attempt>` and left visible to the operator. Inspect that exact path and the successor `.lock` path directly; prove the recorded PID is not live on the recorded host before removing anything. Never glob or bulk-delete quarantine artifacts. The helper only removes the directory it still owns; otherwise it fails closed with `lock-quarantine-conflict`.
 

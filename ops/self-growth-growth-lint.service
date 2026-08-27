@@ -1,0 +1,8 @@
+[Unit]
+Description=Run the self-growth-loop growth-lint wrapper
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash %h/claude-workspace/self-growth-loop/scripts/run-growth-lint.sh
+# Environment=SGL_PATH=/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin
+# Environment=SGL_HEARTBEAT_TOOL=%h/bin/job-heartbeat

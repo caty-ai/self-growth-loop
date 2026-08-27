@@ -347,17 +347,19 @@ Verdict: sufficient for a bundle-only council; no new required file.
   sitter-run, deliverable = file, write-early. Sandbox may refuse writes
   outside its workdir — give delivery paths inside the working repo.
 - **launchd**: council tooling is invoked by orchestrator sessions, not launchd,
-  but any future cron entry must force `LC_ALL` (UTF-8 event lines) — wrappers
-  already do this; all council timestamps are UTC Z regardless of host timezone.
+  but any future cron entry must invoke the wrappers shown in `ops/cron.sample`
+  so their UTF-8 locale probe runs for event lines; all council timestamps are
+  UTC Z regardless of host timezone.
 
 ## 10. Tool interfaces (normative for the scripts)
 
 All tools follow the house rules of `trial-enqueue.sh` / `trial-poll.sh`:
-macOS Bash 3.2 + inline Ruby, `set -u`, forced UTF-8 `LC_ALL` default, ledger
-lock protocol (mkdir + owner + stale-break with quarantine), temp-file +
-YAML-postcondition + atomic rename for every ledger write, `--now <ISO8601Z>`
-override and `--dry-run` for tests, fail-visible diagnostics on stderr,
-violations appended to `<task-id>.violations.md`.
+macOS Bash 3.2 + inline Ruby, `set -u`, marker-delimited UTF-8 locale probe
+(`en_US.UTF-8` first, `C.UTF-8` fallback), ledger lock protocol (mkdir + owner
++ stale-break with quarantine), temp-file + YAML-postcondition + atomic rename
+for every ledger write, `--now <ISO8601Z>` override and `--dry-run` for tests,
+fail-visible diagnostics on stderr, violations appended to
+`<task-id>.violations.md`.
 
 ### council-convene.sh
 

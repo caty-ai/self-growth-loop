@@ -27,7 +27,7 @@ Re-verify (run the integration test below) before deploying against any newer en
 - Second authorized transition executor: `growth-lint` (timeout transitions only).
 - Proposers: reporting agents via Task Packet round-trip — no direct ledger writes.
 
-## Cron entries
+## Scheduling templates
 
 | launchd label | Schedule | Entrypoint | Dead-man coverage |
 |---|---|---|---|
@@ -43,6 +43,53 @@ The timestamped `growth-lint-<ts>.log` and `trial-poll-<ts>.log` files are the a
 The pinned heartbeat interface is `job-heartbeat <job> ok|fail [--reason R] [--duration-ms N]` (provided by the operator's private monitoring infrastructure; path supplied via `SGL_HEARTBEAT_TOOL`, unset by default — e.g. an `EnvironmentVariables` entry in the installed plist. When the tool is absent the wrappers log a warning and continue — see the `[ -x "$heartbeat_tool" ]` guards in `scripts/run-*.sh`). A skipped run caused by lint exit 1 (lock busy) reports `ok`, because the dead-man contract records that cron ran, while the wrapper still returns exit 1.
 
 `RunAtLoad` is false. If the machine is powered off at fire time, launchd does not run this job later as a catch-up; the watchdog staleness alert is the designed catch.
+
+## Linux / WSL2 scheduling
+
+Linux deployments can use the user-level systemd templates in `ops/`:
+
+- `ops/self-growth-growth-lint.service`
+- `ops/self-growth-growth-lint.timer`
+- `ops/self-growth-trial-poll.service`
+- `ops/self-growth-trial-poll.timer`
+
+The service templates use `%h` for the home directory and intentionally do not set `Environment=PATH`; keep `%h` intact when copying them into `~/.config/systemd/user/`. Optional `SGL_PATH` and `SGL_HEARTBEAT_TOOL` overrides are included as commented `Environment=` examples.
+
+Install and enable them as a user:
+
+```sh
+mkdir -p ~/.config/systemd/user
+install -m 644 ops/self-growth-*.service ops/self-growth-*.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now self-growth-trial-poll.timer self-growth-growth-lint.timer
+loginctl enable-linger "$USER"
+```
+
+Enable the timers only. The services intentionally have no `WantedBy=default.target`; the timer `[Install]` sections use `WantedBy=timers.target`.
+
+Use the journal for unit-level visibility:
+
+```sh
+journalctl --user -u self-growth-trial-poll.service
+journalctl --user -u self-growth-growth-lint.service
+```
+
+The journal captures wrapper warnings and unit lifecycle events. The wrappers still write the authoritative timestamped child-output logs under `~/.claude/logs/self-growth/`.
+
+The timer mapping mirrors the launchd schedules: `trial-poll` uses `OnBootSec=1h` plus `OnUnitActiveSec=1h`, and `growth-lint` uses `OnCalendar=*-*-* 07:00:00`. `Persistent=true` is intentionally omitted. If the machine is off at fire time, systemd does not replay the run later by default. Example: a VM that is only up from 09:00 to 18:00 never sees the 07:00 `growth-lint` trigger; the watchdog is the catch. Add `Persistent=true` yourself if you want power-off catch-up semantics.
+
+WSL2 needs systemd enabled before these user timers exist:
+
+```ini
+[boot]
+systemd=true
+```
+
+After changing `/etc/wsl.conf`, restart the distro (for example, `wsl.exe --shutdown` from Windows, then reopen the distro) before running the `systemctl --user` commands above.
+
+For hosts that standardize on cron instead of systemd, start from `ops/cron.sample`. Cron shares the same no-catch-up limitation: if the host is down at fire time, the missed run is skipped.
+
+Keep the vault and engine workspace on a local Linux filesystem such as ext4, including on WSL2. Avoid DrvFs/9p or other host-shared mounts for these paths: the lock and owner-confirmation flows rely on 0700/0600 permissions, directory `fsync`, and `File.link`, all of which are less reliable across cross-OS filesystems.
 
 `SGL_ENGINE_WORKSPACE` selects the workspace that `trial-poll.sh` reconciles trial evidence from (default: `$HOME/claude-workspace/sgl-engine-workspace` — a dedicated workspace initialized with the engine's `loop-init`, separate from any engine checkout). It is read-side only: the enqueue workspace is a mandatory `--workspace` flag on `trial-enqueue.sh` / `council-*.sh` with no environment fallback, and the tick workspace is set in the engine's cron driver (operator-owned deployment config). The three must be kept identical by the operator — they are not linked automatically. The workspace must satisfy the pause contract below. Override the variable explicitly for any isolated deployment.
 

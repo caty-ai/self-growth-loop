@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly self-growth-loop trial-poll timer
+
+[Timer]
+Unit=self-growth-trial-poll.service
+OnBootSec=1h
+OnUnitActiveSec=1h
+
+[Install]
+WantedBy=timers.target

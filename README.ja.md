@@ -9,7 +9,7 @@
 [![Test + Lint](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml/badge.svg)](https://github.com/caty-ai/self-growth-loop/actions/workflows/test-lint.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![runtime](https://img.shields.io/badge/runtime-bash%203.2%2B%20%2B%20ruby-lightgrey)
-![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
+![platform](https://img.shields.io/badge/platform-macOS%20%E2%9C%85%20%7C%20Linux%20%E2%9C%85%20CI%20tested-lightgrey)
 
 あなたのAIは、自分自身のセットアップに対する改善案を次々と提案してきます——新しいツール、より良いプロンプト、ワークフローの微調整。<br>
 それを手作業で取り込むのはスケールしませんし、かといってAIに勝手に変更させると、セットアップが気づかないうちに壊れていきます。<br>
@@ -72,7 +72,8 @@ flowchart LR
 | | 要件 | 備考 |
 |---|---|---|
 | OS | macOS | ✅ テスト済み（標準の bash 3.2 + システムの ruby、gem不要） |
-| | Linux | ⚠️ 未テスト |
+| | Linux | ✅ CIテスト済み |
+| | WSL2 | ✅ 注意点あり — [Linux / WSL2 scheduling](INTEGRATION.md#linux--wsl2-scheduling) を参照 |
 | 単体利用 | 他に何も不要 | 台帳＋lint＋キューレポートはこのリポジトリだけで動作します |
 | 試行 | [caty-agent-harness](https://github.com/caty-ai/caty-agent-harness) のローカルチェックアウト | 試行タスクを実行するエンジン（固定バージョン: v0.6.0） |
 
@@ -136,7 +137,7 @@ make test                  # 全テストスイート。エンジン統合テス
 ## 単体でも、連携させても
 
 - **単体利用** — このリポジトリと台帳用のディレクトリだけで動きます。提案・lint・レビューを手動で行います（上のクイックスタートで実際にやったことです）。
-- **連携利用** — より大きなセットアップに組み込むこともできます。すべて任意です: アイデアを供給するフィードコレクター（sense・例: [X Collector](https://github.com/caty-ai/x-collector)）、試行を実行する[caty-agent-harness](https://github.com/caty-ai/caty-agent-harness)エンジン、毎日のlintを回すlaunchd cron（`ops/`、導入手順は[INTEGRATION.md](INTEGRATION.md)）、外部監視があるならデッドマン・ハートビートなど。
+- **連携利用** — より大きなセットアップに組み込むこともできます。すべて任意です: アイデアを供給するフィードコレクター（sense・例: [X Collector](https://github.com/caty-ai/x-collector)）、試行を実行する[caty-agent-harness](https://github.com/caty-ai/caty-agent-harness)エンジン、wrapper を定期実行する launchd または Linux の systemd/cron（`ops/`、導入手順は[INTEGRATION.md](INTEGRATION.md)）、外部監視があるならデッドマン・ハートビートなど。
 
 ---
 
