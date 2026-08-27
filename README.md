@@ -21,7 +21,7 @@ self-growth-loop turns every suggestion into a tracked proposal that must earn i
 
 </div>
 <!-- repo-state:begin (generated; do not edit) -->
-<p align="center"><sub>generation: <code>443676a</code> (2026-08-26T18:57:35Z) · verify: <a href="https://api.github.com/repos/caty-ai/self-growth-loop/commits/main">API HEAD</a> · <a href="./status.json">status.json</a></sub></p>
+<p align="center"><sub>generation: <code>0a09f7b</code> (2026-08-27T06:40:59Z) · verify: <a href="https://api.github.com/repos/caty-ai/self-growth-loop/commits/main">API HEAD</a> · <a href="./status.json">status.json</a></sub></p>
 <!-- repo-state:end -->
 
 ---
