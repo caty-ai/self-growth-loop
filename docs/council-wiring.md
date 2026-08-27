@@ -148,6 +148,9 @@ VERDICT: GO | NO-GO | RETRY        (exactly one line, exactly one value)
 
 `council-record.sh` (Alpha) validates and records:
 
+- **Body bytes**: CR bytes (including CRLF) are rejected fail-closed everywhere;
+  input is never normalized on read. Repository working trees are protected by
+  `.gitattributes` (`eol=lf`).
 - **Frontmatter is authored by Alpha from the manifest**, never trusted from
   the evaluator: `topic_key`, `task_id`, `lens`, `seat` (`<lens>-a<N>`),
   `evaluator_model`, `evaluator_family`, `evaluator_vendor`, `verdict`,
