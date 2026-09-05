@@ -21,7 +21,7 @@ self-growth-loop เปลี่ยนทุกข้อเสนอให้ก
 
 </div>
 <!-- repo-state:begin (generated; do not edit) -->
-<p align="center"><sub>generation: <code>1b70e45</code> (2026-09-05T09:48:34Z) · verify: <a href="https://api.github.com/repos/caty-ai/self-growth-loop/commits/main">API HEAD</a> · <a href="./status.json">status.json</a></sub></p>
+<p align="center"><sub>generation: <code>9ee7a97</code> (2026-09-05T12:34:30Z) · verify: <a href="https://api.github.com/repos/caty-ai/self-growth-loop/commits/main">API HEAD</a> · <a href="./status.json">status.json</a></sub></p>
 <!-- repo-state:end -->
 
 ---
