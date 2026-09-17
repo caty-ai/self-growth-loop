@@ -500,9 +500,12 @@ expect_exit 4 "$lint" --vault "$contract" --sense-status "$contract/missing.log"
 : >"$contract/status.log"
 expect_exit 4 "$lint" --vault "$contract" --sense-status "$contract/status.log" >/dev/null
 grep -Fq "status file has no sensor entries: $contract/status.log" "$contract_queue" || fail 'empty sensing status detail absent'
-printf '%s mine OK healthy\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >"$contract/status.log"
-expect_exit 0 "$lint" --vault "$contract" --sense-status "$contract/status.log" >/dev/null
-expect_exit 0 "$lint" --vault "$contract" --sense-status "$contract/status.log" --sensors mine >/dev/null
+printf '2026-08-01T00:00:00Z mine OK healthy\n\n \t\n' >"$contract/status.log"
+expect_exit 0 "$lint" --vault "$contract" --now 2026-08-01T00:00:00Z --sense-status "$contract/status.log" >/dev/null
+expect_exit 0 "$lint" --vault "$contract" --now 2026-08-01T00:00:00Z --sense-status "$contract/status.log" --sensors mine >/dev/null
+printf '\n \t\n\n' >"$contract/status.log"
+expect_exit 4 "$lint" --vault "$contract" --now 2026-08-01T00:00:00Z --sense-status "$contract/status.log" >/dev/null
+grep -Fq "status file has no sensor entries: $contract/status.log" "$contract_queue" || fail 'all-blank sensing status detail absent'
 expect_exit 2 "$lint" --vault "$contract" --now bad >/dev/null
 expect_exit 2 "$lint" --vault "$contract" --now bad --dry-run >/dev/null
 expect_exit 2 "$lint" --vault "$contract" --unknown >/dev/null
@@ -530,10 +533,28 @@ for mode in write dry; do
   [ ! -e "$crash/vault/45_ai-systems/self-growth/proposals/.lock" ] || fail 'crash leaked lock'
 done
 chmod 644 "$crash/templates/self-growth-queue.tmpl.md"
-# Exercise the production override after sourcing the shared contract.
-policy_override=$(sed -n '/^adopt_policy_fail() /p' "$lint")
-expect_exit 7 /bin/bash -c '. "$1/scripts/lib-adopt.sh"; eval "$2"; ADOPT_TOOL=growth-lint.sh; adopt_policy_fail lock-quarantine-conflict' _ "$root" "$policy_override" 2>"$crash/policy.err"
-grep -Fxq 'growth-lint.sh: lock-quarantine-conflict' "$crash/policy.err" || fail 'policy diagnostic changed'
+# Check production definition order and execute the real head, before dispatch.
+policy_order_valid() {
+  source_line=$(grep -n '^\. .*lib-adopt\.sh' "$1" | cut -d: -f1)
+  override_line=$(grep -n '^adopt_policy_fail() {' "$1" | cut -d: -f1)
+  [ -n "$source_line" ] && [ -n "$override_line" ] && [ "$source_line" -lt "$override_line" ]
+}
+policy_probe() {
+  sed '/^if \[ "$dry_run" -eq 0 \]; then/,$d' "$1" >"$crash/scripts/policy-probe.sh"
+  printf '\nadopt_policy_fail probe\n' >>"$crash/scripts/policy-probe.sh"
+  /bin/bash "$crash/scripts/policy-probe.sh" --vault "$crash/vault"
+}
+policy_order_valid "$lint" || fail 'policy override must follow lib-adopt.sh source'
+expect_exit 7 policy_probe "$lint" 2>"$crash/policy.err"
+grep -Fxq 'growth-lint.sh: probe' "$crash/policy.err" || fail 'policy diagnostic changed'
+echo 'M4 real script: order PASS; probe exit 7 (PASS)'
+
+# Mutation proof: both checks must reject an override moved above the source.
+ruby -e 's=File.read(ARGV[0]); override=s.slice!(/^adopt_policy_fail\(\) \{.*\}\n/); abort "override missing" unless override; s.sub!(/^\. .*lib-adopt\.sh.*$/) { |line| override + line }; File.write(ARGV[1],s)' "$lint" "$crash/scripts/policy-mutant.sh"
+if policy_order_valid "$crash/scripts/policy-mutant.sh"; then fail 'order check accepted moved override'; fi
+expect_exit 3 policy_probe "$crash/scripts/policy-mutant.sh" 2>"$crash/policy.err"
+grep -Fxq 'growth-lint.sh: probe' "$crash/policy.err" || fail 'mutant policy diagnostic changed'
+echo 'M4 moved override: order FAIL; probe exit 3 (expected 7: FAIL) — mutation detected'
 
 if [ "$failures" -ne 0 ]; then exit 1; fi
 echo 'PASS: test-growth-lint'

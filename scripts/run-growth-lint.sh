@@ -7,10 +7,10 @@ PATH=${SGL_PATH:-/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin}
 export PATH
 case "$heartbeat_tool" in
   ''|*/*) ;;
-  *) heartbeat_tool=$(command -v "$heartbeat_tool" 2>/dev/null || printf '%s' "$heartbeat_tool") ;;
+  *) heartbeat_tool=$(command -v "$heartbeat_tool" 2>/dev/null) || heartbeat_tool='' ;;
 esac
 if [ "${SGL_REQUIRE_HEARTBEAT:-0}" = 1 ] && [ ! -x "$heartbeat_tool" ]; then
-  echo "run-growth-lint.sh: heartbeat tool required but missing: $heartbeat_tool" >&2
+  echo "run-growth-lint.sh: heartbeat tool required but missing: ${SGL_HEARTBEAT_TOOL:-}" >&2
   exit 2
 fi
 if ! command -v ruby >/dev/null 2>&1; then
@@ -152,6 +152,7 @@ exec 3>&-
 if [ "$signal_number" -ne 0 ]; then
   lint_status=$((128 + signal_number))
 fi
+trap - TERM INT HUP
 
 end_seconds=$(date +%s)
 duration_ms=$(((end_seconds - start_seconds) * 1000))
@@ -165,19 +166,19 @@ case "$lint_status" in
   0|1) heartbeat_status=ok; reason='-' ;;
   *)
     heartbeat_status=fail
-    case "$lint_status" in
-      2) meaning=usage ;;
-      3) meaning=damaged ;;
-      4) meaning=sense-broken ;;
-      5) meaning=report-write-failed ;;
-      6) meaning=internal-error ;;
-      7) meaning=lock-conflict ;;
-      127) meaning=ruby-missing ;;
-      *) meaning=unknown; [ "$lint_status" -lt 128 ] || meaning=signal ;;
-    esac
     if [ -n "$signal_name" ]; then
       reason="signal $signal_name (exit $lint_status); see $log_basename"
     else
+      case "$lint_status" in
+        2) meaning=usage-or-precondition ;;
+        3) meaning=damaged ;;
+        4) meaning=sense-broken ;;
+        5) meaning=report-write-failed ;;
+        6) meaning=internal-error ;;
+        7) meaning=lock-conflict ;;
+        127) meaning=command-missing ;;
+        *) meaning=unknown; [ "$lint_status" -lt 128 ] || meaning=signal ;;
+      esac
       reason="exit $lint_status ($meaning); see $log_basename"
     fi
     ;;
@@ -202,5 +203,4 @@ if [ "$lint_status" -eq 1 ]; then
   echo "run-growth-lint.sh: lock busy: skipped (heartbeat ok)" >&2
 fi
 
-trap - TERM INT HUP
 exit "$lint_status"

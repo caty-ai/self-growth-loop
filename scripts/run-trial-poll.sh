@@ -7,10 +7,10 @@ PATH=${SGL_PATH:-/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin}
 export PATH
 case "$heartbeat_tool" in
   ''|*/*) ;;
-  *) heartbeat_tool=$(command -v "$heartbeat_tool" 2>/dev/null || printf '%s' "$heartbeat_tool") ;;
+  *) heartbeat_tool=$(command -v "$heartbeat_tool" 2>/dev/null) || heartbeat_tool='' ;;
 esac
 if [ "${SGL_REQUIRE_HEARTBEAT:-0}" = 1 ] && [ ! -x "$heartbeat_tool" ]; then
-  echo "run-trial-poll.sh: heartbeat tool required but missing: $heartbeat_tool" >&2
+  echo "run-trial-poll.sh: heartbeat tool required but missing: ${SGL_HEARTBEAT_TOOL:-}" >&2
   exit 2
 fi
 if ! command -v ruby >/dev/null 2>&1; then

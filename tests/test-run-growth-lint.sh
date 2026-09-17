@@ -67,7 +67,7 @@ SGL_LINT="$failure_lint" SGL_HEARTBEAT_TOOL="$heartbeat" SGL_LOG_DIR="$failure_d
 failure_status=$?
 [ "$failure_status" -eq 2 ] || fail "failure wrapper returned $failure_status instead of 2"
 grep -Fq 'self-growth-lint fail' "$failure_dir/heartbeat.calls" || fail 'fail heartbeat was not sent'
-grep -Fq -- '--reason exit 2 (usage); see growth-lint-' "$failure_dir/heartbeat.calls" || fail 'failure heartbeat reason was not sent'
+grep -Fq -- '--reason exit 2 (usage-or-precondition); see growth-lint-' "$failure_dir/heartbeat.calls" || fail 'failure heartbeat reason was not sent'
 
 # Lock contention preserves exit 1 but records an ok heartbeat and skip note.
 skip_dir="$test_dir/skip"
@@ -208,7 +208,7 @@ home_status=$?
 grep -Fq 'self-growth-lint ok' "$home_dir/heartbeat.calls" || fail 'clean-environment run did not send an ok heartbeat'
 
 # Every documented failure and unknown status stays red in both observers.
-for entry in 3:damaged 4:sense-broken 5:report-write-failed 6:internal-error 7:lock-conflict 127:ruby-missing 42:unknown; do
+for entry in 3:damaged 4:sense-broken 5:report-write-failed 6:internal-error 7:lock-conflict 127:command-missing 42:unknown; do
   code=${entry%%:*}; meaning=${entry#*:}
   case_dir="$test_dir/status-$code"; mkdir -p "$case_dir"
   make_lint_stub "$case_dir/lint" "$code" 'status output'
@@ -221,6 +221,14 @@ for entry in 3:damaged 4:sense-broken 5:report-write-failed 6:internal-error 7:l
   grep -Eq "^status=fail at=[^ ]+ exit=$code duration_ms=[0-9]+ reason=exit $code" "$case_dir/logs/growth-lint.heartbeat" || fail "wrong file heartbeat for $code"
   grep -Fq -- '--sensors mine' "$case_dir/lint.calls" || fail 'scheduled sensing default changed'
 done
+# A missing lint executable is also command-missing, not specifically Ruby.
+actual=0
+SGL_LINT="$test_dir/no-such-lint" SGL_HEARTBEAT_TOOL="$heartbeat" \
+  SGL_TEST_HEARTBEAT_CALLS="$test_dir/missing-lint.calls" SGL_LOG_DIR="$test_dir/missing-lint-logs" \
+  /bin/bash "$wrapper" || actual=$?
+[ "$actual" -eq 127 ] || fail "missing lint returned $actual instead of 127"
+grep -Fq 'exit 127 (command-missing)' "$test_dir/missing-lint.calls" || fail 'missing lint reason drifted'
+grep -Fq 'exit=127 duration_ms=' "$test_dir/missing-lint-logs/growth-lint.heartbeat" || fail 'missing lint file heartbeat absent'
 grep -Eq '^status=ok .* exit=1 ' "$skip_dir/logs/growth-lint.heartbeat" || fail 'skip file heartbeat is not ok'
 grep -Eq '^status=fail .* exit=2 ' "$missing_dir/logs/growth-lint.heartbeat" || fail 'missing tool lost file heartbeat'
 
@@ -261,6 +269,34 @@ SGL_REQUIRE_HEARTBEAT=1 SGL_PATH="$test_dir:/usr/bin:/bin" SGL_HEARTBEAT_TOOL=jo
   /bin/bash "$wrapper" || fail 'required bare heartbeat blocked lint'
 [ -s "$test_dir/bare-lint.calls" ] || fail 'bare tool preflight did not run lint'
 grep -Fq 'self-growth-lint ok' "$test_dir/bare-heartbeat.calls" || fail 'bare heartbeat was not invoked'
+
+# An executable in CWD alone must not pass PATH-based preflight in either wrapper.
+for job in growth-lint trial-poll; do
+  cwd_dir="$test_dir/cwd-$job"
+  mkdir -p "$cwd_dir"
+  cp "$heartbeat" "$cwd_dir/sgl-cwd-only-heartbeat"
+  actual=0
+  (
+    cd "$cwd_dir" || exit 99
+    SGL_REQUIRE_HEARTBEAT=1 SGL_PATH=/usr/bin:/bin SGL_HEARTBEAT_TOOL=sgl-cwd-only-heartbeat \
+      SGL_LINT="$success_lint" SGL_TRIAL_POLL="$success_lint" \
+      SGL_TEST_LINT_CALLS="$cwd_dir/lint.calls" SGL_LOG_DIR="$cwd_dir/logs" \
+      /bin/bash "$root/scripts/run-$job.sh"
+  ) 2>"$cwd_dir/stderr" || actual=$?
+  [ "$actual" -eq 2 ] || fail "$job CWD-only tool returned $actual instead of 2"
+  [ ! -e "$cwd_dir/lint.calls" ] || fail "$job ran child with required CWD-only tool"
+  [ ! -e "$cwd_dir/logs" ] || fail "$job started logging before required-tool preflight"
+  grep -Fq "run-$job.sh: heartbeat tool required but missing: sgl-cwd-only-heartbeat" "$cwd_dir/stderr" || fail "$job lost original bare name"
+  (
+    cd "$cwd_dir" || exit 99
+    SGL_REQUIRE_HEARTBEAT=0 SGL_PATH=/usr/bin:/bin SGL_HEARTBEAT_TOOL=sgl-cwd-only-heartbeat \
+      SGL_LINT="$success_lint" SGL_TRIAL_POLL="$success_lint" \
+      SGL_TEST_LINT_CALLS="$cwd_dir/lint.calls" SGL_TEST_HEARTBEAT_CALLS="$cwd_dir/heartbeat.calls" \
+      SGL_LOG_DIR="$cwd_dir/logs" /bin/bash "$root/scripts/run-$job.sh"
+  ) 2>"$cwd_dir/optional.stderr" || fail "$job optional CWD-only tool altered child success"
+  grep -Fq 'warning: heartbeat tool missing or not executable:' "$cwd_dir/optional.stderr" || fail "$job did not treat optional CWD-only tool as missing"
+  [ ! -e "$cwd_dir/heartbeat.calls" ] || fail "$job invoked CWD-only tool"
+done
 
 if [ "$failures" -ne 0 ]; then exit 1; fi
 echo 'PASS: test-run-growth-lint'

@@ -351,7 +351,7 @@ requested = !ENV['SENSORS'].to_s.strip.empty? || !ENV['SENSE_STATUS'].to_s.empty
 if !requested; sense << 'Sensing disabled (no sensors requested)'
 elsif !File.file?(sp); broken=true; sense << "missing status file: #{sp}"
 else
-  File.foreach(sp).with_index { |line,i| f=line.strip.split(/\s+/,4); latest[f[1] || "line-#{i+1}"]=f }; ENV['SENSORS'].to_s.split(',').map(&:strip).reject(&:empty?).each { |s| latest[s]=nil unless latest.key?(s) }
+  File.foreach(sp).with_index { |line,i| next if line.strip.empty?; f=line.strip.split(/\s+/,4); latest[f[1] || "line-#{i+1}"]=f }; ENV['SENSORS'].to_s.split(',').map(&:strip).reject(&:empty?).each { |s| latest[s]=nil unless latest.key?(s) }
   if latest.empty?; broken=true; sense << "status file has no sensor entries: #{sp}" end
   latest.keys.sort.each do |sensor|
     f=latest[sensor]
