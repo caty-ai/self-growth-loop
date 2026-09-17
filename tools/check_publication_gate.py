@@ -194,6 +194,8 @@ def _git_paths(root):
     those external policies must not hide publication sources (fail-closed).
     The interpreter and PATH-resolved git binary are trusted inputs; control of
     PATH also controls python3. Git configuration and repository state are hostile.
+    Tracked submodule contents are out of scope: the superproject publishes only
+    the gitlink, and each submodule is gated by its own run.
     """
     if os.path.islink(root / ".git"):
         raise GateConfigurationError(
@@ -206,6 +208,10 @@ def _git_paths(root):
         "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT", "XDG_CONFIG_HOME",
         "GIT_DISCOVERY_ACROSS_FILESYSTEM", "GIT_ALTERNATE_OBJECT_DIRECTORIES",
         "GIT_OBJECT_DIRECTORY", "GIT_NAMESPACE",
+        "GIT_ASKPASS", "SSH_ASKPASS", "GIT_SSH", "GIT_SSH_COMMAND",
+        "GIT_PAGER", "PAGER", "GIT_EDITOR", "GIT_SEQUENCE_EDITOR",
+        "GIT_TERMINAL_PROMPT", "GIT_ATTR_SOURCE", "GIT_ICASE_PATHSPECS",
+        "GIT_LITERAL_PATHSPECS", "GIT_GLOB_PATHSPECS", "GIT_NOGLOB_PATHSPECS",
     ):
         git_env.pop(name, None)
     for name in list(git_env):
@@ -228,6 +234,11 @@ def _git_paths(root):
         )
         observed = os.fsdecode(toplevel.stdout).rstrip("\n")
         detail = toplevel.stderr.decode("utf-8", errors="replace").strip()
+        if toplevel.returncode == 0 and detail:
+            raise GateConfigurationError(
+                "gate-error: git enumeration failed for a root containing .git: "
+                "git reported a warning during enumeration: %s" % detail.splitlines()[0]
+            )
         matches_root = False
         if toplevel.returncode == 0 and observed:
             matches_root = os.path.realpath(observed) == os.path.realpath(root)
@@ -255,11 +266,17 @@ def _git_paths(root):
         raise GateConfigurationError(
             "gate-error: git enumeration failed for a root containing .git: %s" % exc
         ) from exc
+    detail = result.stderr.decode("utf-8", errors="replace").strip()
     if result.returncode != 0:
-        detail = result.stderr.decode("utf-8", errors="replace").strip()
         raise GateConfigurationError(
             "gate-error: git enumeration failed for a root containing .git: %s"
             % (detail or "git ls-files exited %d" % result.returncode)
+        )
+    # Git can omit an unreadable untracked subtree while still exiting zero.
+    if detail:
+        raise GateConfigurationError(
+            "gate-error: git enumeration failed for a root containing .git: "
+            "git reported a warning during enumeration: %s" % detail.splitlines()[0]
         )
     paths = []
     for relative_bytes in filter(None, result.stdout.split(b"\0")):
@@ -275,7 +292,9 @@ def _git_paths(root):
             raise GateConfigurationError(
                 "gate-error: git enumeration failed for a root containing .git: "
                 "git returned a directory entry %r (embedded repository or unsupported layout); "
-                "publication sources inside it cannot be verified" % relative
+                "publication sources inside it cannot be verified; "
+                "remove its .git or add the directory to the tree's .gitignore "
+                "to exclude it deliberately" % relative
             )
         paths.append(root / relative)
     return paths
@@ -1149,9 +1168,15 @@ def selftest_end_to_end():
         )
         previous_cwd = Path.cwd()
         previous_environment = os.environ.copy()
+        scrubbed_names = (
+            "GIT_CONFIG", "GIT_ASKPASS", "SSH_ASKPASS", "GIT_SSH", "GIT_SSH_COMMAND",
+            "GIT_PAGER", "PAGER", "GIT_EDITOR", "GIT_SEQUENCE_EDITOR",
+            "GIT_TERMINAL_PROMPT", "GIT_ATTR_SOURCE", "GIT_ICASE_PATHSPECS",
+            "GIT_LITERAL_PATHSPECS", "GIT_GLOB_PATHSPECS", "GIT_NOGLOB_PATHSPECS",
+        )
         try:
             os.chdir(root)
-            with patch.dict(os.environ, {"GIT_CONFIG": str(root / "legacy-config")}):
+            with patch.dict(os.environ, {name: "1" for name in scrubbed_names}):
                 with patch.object(subprocess, "run", wraps=subprocess.run) as git_run:
                     _git_paths(Path("."))
                 _selftest_check(
@@ -1159,12 +1184,37 @@ def selftest_end_to_end():
                     and all(
                         call.kwargs["env"]["GIT_CEILING_DIRECTORIES"]
                         == os.path.dirname(os.path.realpath(root))
-                        and "GIT_CONFIG" not in call.kwargs["env"]
-                        and call.args[0][:5]
-                        == ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.devnull]
                         for call in git_run.call_args_list
                     ),
-                    "relative-dot root uses parent ceiling and both git calls disable hooks and scrub legacy config",
+                    "relative-dot root: both git calls use the parent ceiling",
+                )
+                git_overrides = []
+                for call in git_run.call_args_list:
+                    argv = call.args[0]
+                    overrides = set()
+                    i = 1
+                    while i < len(argv) and argv[i].startswith("-"):
+                        if argv[i] == "-c":
+                            overrides.add(argv[i + 1])
+                            i += 2
+                        else:
+                            i += 1
+                    git_overrides.append(overrides)
+                _selftest_check(
+                    len(git_overrides) == 2
+                    and all(
+                        {"core.fsmonitor=false", "core.hooksPath=" + os.devnull} <= overrides
+                        for overrides in git_overrides
+                    ),
+                    "relative-dot root: both git calls carry the two -c overrides",
+                )
+                _selftest_check(
+                    len(git_run.call_args_list) == 2
+                    and all(
+                        not any(name in call.kwargs["env"] for name in scrubbed_names)
+                        for call in git_run.call_args_list
+                    ),
+                    "relative-dot root: both git calls scrub GIT_CONFIG and unsafe environment names",
                 )
         finally:
             os.chdir(previous_cwd)
@@ -1215,6 +1265,59 @@ def selftest_end_to_end():
         root = Path(temporary)
         _materialize_fixture(root)
         _initialize_git_fixture(root, ("README.md", DENYLIST_NAME))
+        locked = root / "locked"
+        locked.mkdir()
+        (locked / "leak.md").write_text(
+            _fixture_personal_url("neutral-owner", "private") + "\n", encoding="utf-8"
+        )
+        original_mode = stat.S_IMODE(locked.stat().st_mode)
+        try:
+            locked.chmod(0o000)
+            _selftest_check(
+                os.geteuid() != 0,
+                "chmod-000 enumeration probe unavailable as root: permissions are not enforced",
+            )
+            status, output = _capture_main(
+                ["--root", str(root), "--account-slug", "neutral-owner"]
+            )
+            _selftest_check(
+                status == 1
+                and "gate-error: git enumeration failed for a root containing .git: "
+                "git reported a warning during enumeration:" in output
+                and "locked/" in output,
+                "unreadable untracked directory fails closed: %r" % output,
+            )
+        finally:
+            locked.chmod(original_mode)
+
+        real_run = subprocess.run
+        for command in ("rev-parse", "ls-files"):
+            for diagnostic in (b" \nwarning: enumeration probe\nsecond line\n", b" \n\t"):
+                def diagnostic_run(arguments, **kwargs):
+                    result = real_run(arguments, **kwargs)
+                    if command in arguments:
+                        result.stderr = diagnostic
+                    return result
+
+                with patch.object(subprocess, "run", side_effect=diagnostic_run):
+                    try:
+                        _git_paths(root)
+                    except GateConfigurationError as exc:
+                        _selftest_check(
+                            bool(diagnostic.strip())
+                            and str(exc) == "gate-error: git enumeration failed for a root containing .git: "
+                            "git reported a warning during enumeration: warning: enumeration probe",
+                            "%s warning reports only its first line: %s" % (command, exc),
+                        )
+                    else:
+                        _selftest_check(
+                            not diagnostic.strip(), "%s warning must fail closed" % command
+                        )
+
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        _materialize_fixture(root)
+        _initialize_git_fixture(root, ("README.md", DENYLIST_NAME))
         vendor = root / "vendor"
         vendor.mkdir()
         _git(["init", "-q"], vendor)
@@ -1227,7 +1330,9 @@ def selftest_end_to_end():
         _selftest_check(
             status == 1
             and "gate-error: git enumeration failed" in output
-            and "git returned a directory entry 'vendor/'" in output,
+            and "git returned a directory entry 'vendor/'" in output
+            and "remove its .git or add the directory to the tree's .gitignore "
+            "to exclude it deliberately" in output,
             "untracked embedded repository fails closed: %r" % output,
         )
         (root / ".gitignore").write_text("vendor/\n", encoding="utf-8")
