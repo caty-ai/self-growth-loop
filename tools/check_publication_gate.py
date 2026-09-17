@@ -188,9 +188,31 @@ def load_label_whitelist(root):
 
 
 def _git_paths(root):
+    """Enumerate using only the tree's .gitignore policy for untracked files.
+
+    Files ignored solely by info/exclude or global excludes are scanned too:
+    those external policies must not hide publication sources (fail-closed).
+    """
+    if os.path.islink(root / ".git"):
+        raise GateConfigurationError(
+            "gate-error: git enumeration failed for a root containing .git: .git is a symlink"
+        )
     git_env = os.environ.copy()
-    for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE"):
+    for name in (
+        "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE",
+        "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_NOSYSTEM",
+        "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT", "XDG_CONFIG_HOME",
+        "GIT_DISCOVERY_ACROSS_FILESYSTEM", "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_OBJECT_DIRECTORY", "GIT_NAMESPACE",
+    ):
         git_env.pop(name, None)
+    for name in list(git_env):
+        if name.startswith(("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_")):
+            git_env.pop(name)
+    git_env["GIT_CONFIG_GLOBAL"] = os.devnull
+    git_env["GIT_CONFIG_NOSYSTEM"] = "1"
+    # GIT_CEILING_DIRECTORIES is colon-delimited and belt-only; the toplevel
+    # equality check below is the primary defence against ancestor discovery.
     git_env["GIT_CEILING_DIRECTORIES"] = os.path.realpath(root.parent)
     try:
         toplevel = subprocess.run(
@@ -218,7 +240,7 @@ def _git_paths(root):
                 % (observed, root, "; " + detail if detail else "")
             )
         result = subprocess.run(
-            ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+            ["git", "ls-files", "--cached", "--others", "--exclude-per-directory=.gitignore", "-z"],
             cwd=str(root),
             env=git_env,
             stdout=subprocess.PIPE,
@@ -1091,7 +1113,8 @@ def selftest_end_to_end():
         )
 
     with tempfile.TemporaryDirectory() as temporary:
-        root = Path(temporary)
+        root = Path(temporary) / "repo"
+        root.mkdir()
         _materialize_fixture(root)
         (root / "binary.dat").write_bytes(b"\x80\x81\x82")
         _initialize_git_fixture(root, ("README.md", DENYLIST_NAME, "binary.dat"))
@@ -1104,7 +1127,7 @@ def selftest_end_to_end():
             and "binary files skipped: 1" in output,
             "git binary is skipped once and counted: %r" % output,
         )
-        alias = root / "root-alias"
+        alias = root.parent / (root.name + "-alias")
         alias.symlink_to(root, target_is_directory=True)
         _selftest_check(
             alias / "README.md" in _git_paths(alias),
@@ -1116,6 +1139,105 @@ def selftest_end_to_end():
                 case_alias / "README.md" in _git_paths(case_alias),
                 "git root with alternate filesystem casing is accepted",
             )
+
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary) / "repo"
+        root.mkdir()
+        _materialize_fixture(root)
+        _initialize_git_fixture(root, ("README.md", DENYLIST_NAME))
+        (root / "secret.md").write_text(
+            _fixture_personal_url("neutral-owner", "private") + "\n", encoding="utf-8"
+        )
+        excludes = Path(temporary) / "excludes"
+        excludes.write_text("secret.md\n", encoding="utf-8")
+        injected = {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "core.excludesFile",
+            "GIT_CONFIG_VALUE_0": str(excludes),
+        }
+        previous = {name: os.environ.get(name) for name in injected}
+        try:
+            os.environ.update(injected)
+            status, output = _capture_main(
+                ["--root", str(root), "--account-slug", "neutral-owner"]
+            )
+        finally:
+            for name, value in previous.items():
+                if value is None:
+                    os.environ.pop(name, None)
+                else:
+                    os.environ[name] = value
+        _selftest_check(
+            status == 1 and "personal-url: secret.md:1" in output,
+            "environment-injected excludes cannot hide untracked documents: %r" % output,
+        )
+
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary) / "repo"
+        foreign = Path(temporary) / "foreign"
+        root.mkdir()
+        foreign.mkdir()
+        _materialize_fixture(root)
+        _git(["init", "-q"], foreign)
+        (foreign / ".git" / "info" / "exclude").write_text("secret.md\n", encoding="utf-8")
+        (root / ".git").write_text("gitdir: %s\n" % (foreign / ".git"), encoding="utf-8")
+        (root / "secret.md").write_text(
+            _fixture_personal_url("neutral-owner", "private") + "\n", encoding="utf-8"
+        )
+        status, output = _capture_main(
+            ["--root", str(root), "--account-slug", "neutral-owner"]
+        )
+        _selftest_check(
+            status == 1 and "personal-url: secret.md:1" in output,
+            "foreign gitdir info/exclude cannot hide untracked documents: %r" % output,
+        )
+        (root / ".git").unlink()
+        (root / ".git").symlink_to(foreign / ".git", target_is_directory=True)
+        status, output = _capture_main(
+            ["--root", str(root), "--account-slug", "neutral-owner"]
+        )
+        _selftest_check(
+            status == 1
+            and "gate-error: git enumeration failed" in output
+            and ".git is a symlink" in output,
+            ".git symlink fails closed: %r" % output,
+        )
+
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary) / "repo"
+        root.mkdir()
+        _materialize_fixture(root)
+        _initialize_git_fixture(root, ("README.md", DENYLIST_NAME))
+        _git(
+            ["-c", "user.name=Publication Gate", "-c", "user.email=gate@" "example.invalid",
+             "-c", "core.hooksPath=" + os.devnull, "-c", "commit.gpgsign=false",
+             "commit", "-qm", "Publication gate fixture"],
+            root,
+        )
+        worktree = Path(temporary) / "worktree"
+        _git(["worktree", "add", "--detach", str(worktree), "HEAD"], root)
+        _selftest_check((worktree / ".git").is_file(), "real worktree uses a gitfile")
+        status, output = _capture_main(
+            ["--root", str(worktree), "--account-slug", "neutral-owner"]
+        )
+        _selftest_check(
+            status == 0 and "enumeration: git" in output,
+            "real worktree gitfile remains accepted: %r" % output,
+        )
+        # A local-path submodule needs no network; allow file transport only here.
+        _git(
+            ["-c", "protocol.file.allow=always", "submodule", "add", "-q", str(root), "child"],
+            worktree,
+        )
+        submodule = worktree / "child"
+        _selftest_check((submodule / ".git").is_file(), "local submodule uses a gitfile")
+        status, output = _capture_main(
+            ["--root", str(submodule), "--account-slug", "neutral-owner"]
+        )
+        _selftest_check(
+            status == 0 and "enumeration: git" in output,
+            "local submodule gitfile remains accepted: %r" % output,
+        )
 
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)

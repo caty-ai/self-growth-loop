@@ -9,6 +9,7 @@ fail() { echo "test-publication-gate.sh: $*" >&2; exit 1; }
 python3 -B "$checker" --selftest || fail 'self-test failed'
 outer=$(mktemp -d "${TMPDIR:-/tmp}/pubgate-outer.XXXXXX") || fail 'mktemp failed'
 trap 'rm -rf "$outer"' EXIT
+trap 'exit 130' HUP INT TERM
 git -c init.defaultBranch=main init -q "$outer" || fail 'outer git init failed'
 printf 'work/\n' > "$outer/.gitignore" || fail 'outer gitignore failed'
 mkdir -p "$outer/work" || fail 'nested directory failed'
