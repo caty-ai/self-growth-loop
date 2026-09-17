@@ -497,6 +497,9 @@ done
 rm -f "$contract/45_ai-systems/self-growth/proposals/broken-record.md"
 expect_exit 0 "$lint" --vault "$contract" --sensors '   ' >/dev/null
 expect_exit 4 "$lint" --vault "$contract" --sense-status "$contract/missing.log" >/dev/null
+: >"$contract/status.log"
+expect_exit 4 "$lint" --vault "$contract" --sense-status "$contract/status.log" >/dev/null
+grep -Fq "status file has no sensor entries: $contract/status.log" "$contract_queue" || fail 'empty sensing status detail absent'
 printf '%s mine OK healthy\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >"$contract/status.log"
 expect_exit 0 "$lint" --vault "$contract" --sense-status "$contract/status.log" >/dev/null
 expect_exit 0 "$lint" --vault "$contract" --sense-status "$contract/status.log" --sensors mine >/dev/null
@@ -512,6 +515,25 @@ rmdir "$contract_queue" "$contract/25_review-pending"
 printf 'not a directory\n' >"$contract/25_review-pending"
 expect_exit 5 "$lint" --vault "$contract" >/dev/null
 rm -rf "$contract"
+
+# An actual interpreter exception must remain red, with its original diagnostic.
+crash="$vault/crash-repo"
+mkdir -p "$crash"
+cp -R "$root/scripts" "$root/templates" "$crash/"
+chmod 000 "$crash/templates/self-growth-queue.tmpl.md"
+for mode in write dry; do
+  set --
+  [ "$mode" != dry ] || set -- --dry-run
+  expect_exit 6 /bin/bash "$crash/scripts/growth-lint.sh" --vault "$crash/vault" "$@" >"$crash/out" 2>"$crash/err"
+  grep -Fq 'Errno::EACCES' "$crash/err" || fail 'original Ruby exception lost'
+  grep -Fq 'growth-lint.sh: exit 6 — internal error (ruby exited 1); see output above' "$crash/err" || fail 'internal error summary absent'
+  [ ! -e "$crash/vault/45_ai-systems/self-growth/proposals/.lock" ] || fail 'crash leaked lock'
+done
+chmod 644 "$crash/templates/self-growth-queue.tmpl.md"
+# Exercise the production override after sourcing the shared contract.
+policy_override=$(sed -n '/^adopt_policy_fail() /p' "$lint")
+expect_exit 7 /bin/bash -c '. "$1/scripts/lib-adopt.sh"; eval "$2"; ADOPT_TOOL=growth-lint.sh; adopt_policy_fail lock-quarantine-conflict' _ "$root" "$policy_override" 2>"$crash/policy.err"
+grep -Fxq 'growth-lint.sh: lock-quarantine-conflict' "$crash/policy.err" || fail 'policy diagnostic changed'
 
 if [ "$failures" -ne 0 ]; then exit 1; fi
 echo 'PASS: test-growth-lint'

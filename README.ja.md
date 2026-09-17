@@ -105,7 +105,7 @@ bash scripts/growth-lint.sh --vault /tmp/sgl-demo-vault
 cat /tmp/sgl-demo-vault/25_review-pending/self-growth-queue.md
 ```
 
-これで、ループの記帳処理を一通り実行できました。提案レコードが作成され、lintにかけられ、レポートされました。（レポートには `SENSE BROKEN` と表示されますが、これは想定どおりです——単体デモにはフィードコレクターが接続されていないためです。）`rm -rf /tmp/sgl-demo-vault` を実行すればすべて元に戻せます——リポジトリ自体には一切書き込みが行われていません。
+これで、ループの記帳処理を一通り実行できました。提案レコードが作成され、lintにかけられ、レポートされました。センシングは `--sensors mine` で明示的に有効化します。定期実行用 wrapper ではデフォルトで有効です。`rm -rf /tmp/sgl-demo-vault` を実行すればすべて元に戻せます——リポジトリ自体には一切書き込みが行われていません。
 
 <details>
 <summary>テストスイート全体を実行する（エンジンが必要）</summary>

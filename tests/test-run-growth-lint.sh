@@ -183,7 +183,7 @@ wait "$signal_wrapper_pid"
 signal_status=$?
 [ "$signal_status" -eq 143 ] || fail "signal wrapper returned $signal_status instead of 143"
 grep -Fq 'self-growth-lint fail' "$signal_dir/heartbeat.calls" || fail 'signal did not send a fail heartbeat'
-grep -Fq -- '--reason exit 143 (signal);' "$signal_dir/heartbeat.calls" || fail 'signal heartbeat reason was not sent'
+grep -Fq -- '--reason signal TERM (exit 143);' "$signal_dir/heartbeat.calls" || fail 'signal heartbeat reason was not sent'
 grep -Fq 'finished' "$signal_dir/marker" && fail 'signal child was not terminated'
 
 # HOME is mandatory even when paths are overridden; a clean environment works once HOME is supplied.
@@ -208,7 +208,7 @@ home_status=$?
 grep -Fq 'self-growth-lint ok' "$home_dir/heartbeat.calls" || fail 'clean-environment run did not send an ok heartbeat'
 
 # Every documented failure and unknown status stays red in both observers.
-for entry in 3:damaged 4:sense-broken 5:report-write-failed 127:ruby-missing 42:unknown; do
+for entry in 3:damaged 4:sense-broken 5:report-write-failed 6:internal-error 7:lock-conflict 127:ruby-missing 42:unknown; do
   code=${entry%%:*}; meaning=${entry#*:}
   case_dir="$test_dir/status-$code"; mkdir -p "$case_dir"
   make_lint_stub "$case_dir/lint" "$code" 'status output'
@@ -225,7 +225,7 @@ grep -Eq '^status=ok .* exit=1 ' "$skip_dir/logs/growth-lint.heartbeat" || fail 
 grep -Eq '^status=fail .* exit=2 ' "$missing_dir/logs/growth-lint.heartbeat" || fail 'missing tool lost file heartbeat'
 
 # Required-tool preflight runs before lint, logging, or any other setup.
-for missing_tool in '' "$test_dir/not-executable" "$test_dir/not-there"; do
+for missing_tool in '' sgl-missing-heartbeat "$test_dir/not-executable" "$test_dir/not-there"; do
   printf '#!/bin/sh\n' >"$test_dir/not-executable"
   required_dir="$test_dir/required"; mkdir -p "$required_dir"
   actual=0
@@ -252,6 +252,15 @@ actual=$?
 [ "$actual" -eq 2 ] || fail 'file publication failure masked child status'
 grep -Fq 'warning: heartbeat file update failed' "$required_dir/stderr" || fail 'file publication warning absent'
 [ -z "$(find "$test_dir" -name '*.heartbeat.tmp.*' -print)" ] || fail 'heartbeat temp file leaked'
+
+# Bare executable names are resolved using SGL_PATH before the required gate.
+cp "$heartbeat" "$test_dir/job-heartbeat"
+SGL_REQUIRE_HEARTBEAT=1 SGL_PATH="$test_dir:/usr/bin:/bin" SGL_HEARTBEAT_TOOL=job-heartbeat \
+  SGL_LINT="$success_lint" SGL_TEST_LINT_CALLS="$test_dir/bare-lint.calls" \
+  SGL_TEST_HEARTBEAT_CALLS="$test_dir/bare-heartbeat.calls" SGL_LOG_DIR="$test_dir/bare-logs" \
+  /bin/bash "$wrapper" || fail 'required bare heartbeat blocked lint'
+[ -s "$test_dir/bare-lint.calls" ] || fail 'bare tool preflight did not run lint'
+grep -Fq 'self-growth-lint ok' "$test_dir/bare-heartbeat.calls" || fail 'bare heartbeat was not invoked'
 
 if [ "$failures" -ne 0 ]; then exit 1; fi
 echo 'PASS: test-run-growth-lint'

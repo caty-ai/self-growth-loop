@@ -19,10 +19,12 @@ Sensing is opt-in via --sensors or --sense-status.
 Exit codes (also in --dry-run; reports are published/printed before 3 or 4):
   0   clean: no DAMAGED, sensing OK or not requested
   1   lock busy: skipped without writes
-  2   usage / bad option / bad --now
+  2   usage / bad option / bad --now / precondition failure (ledger dir, lock identity)
   3   DAMAGED: damaged records or failed actions (takes precedence over 4)
   4   SENSE BROKEN while sensors were requested
   5   report publication failed
+  6   internal error (uncaught interpreter failure)
+  7   lock-conflict (lock quarantine conflict)
   127 ruby missing
 EOF
 }
@@ -54,6 +56,8 @@ adopt_lock_busy() {
   exit 1
 }
 
+adopt_policy_fail() { echo "${ADOPT_TOOL:-adopt}: $*" >&2; exit 7; }
+
 adopt_lock_report_stale() {
   if [ "${2:-0}" -eq 1 ]; then
     echo "STALE_LOCK_BROKEN (ownerless) $1"
@@ -65,6 +69,12 @@ adopt_lock_report_stale() {
 run() {
   VAULT="$vault" LEDGER="$ledger" REPORT="$report" TEMPLATE="$root/templates/self-growth-queue.tmpl.md" NOW_OVERRIDE="$now_override" \
   SENSE_STATUS="$sense_status" SENSORS="$sensors" DRY_RUN="$dry_run" ruby "$root/scripts/growth-lint.rb"
+  ruby_status=$?
+  if [ "$ruby_status" -eq 1 ]; then
+    echo "growth-lint.sh: exit 6 — internal error (ruby exited 1); see output above" >&2
+    ruby_status=6
+  fi
+  return "$ruby_status"
 }
 
 if [ "$dry_run" -eq 0 ]; then
