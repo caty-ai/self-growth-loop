@@ -188,10 +188,39 @@ def load_label_whitelist(root):
 
 
 def _git_paths(root):
+    git_env = os.environ.copy()
+    for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE"):
+        git_env.pop(name, None)
+    git_env["GIT_CEILING_DIRECTORIES"] = os.path.realpath(root.parent)
     try:
+        toplevel = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=str(root),
+            env=git_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        observed = os.fsdecode(toplevel.stdout).rstrip("\n")
+        if (
+            toplevel.returncode != 0
+            or not observed
+            or (
+                os.path.realpath(observed) != os.path.realpath(root)
+                # realpath preserves input casing on case-insensitive filesystems.
+                and not os.path.samefile(observed, root)
+            )
+        ):
+            detail = toplevel.stderr.decode("utf-8", errors="replace").strip()
+            raise GateConfigurationError(
+                "gate-error: git enumeration failed for a root containing .git: "
+                "git resolved toplevel %r but the gate root is %s%s"
+                % (observed, root, "; " + detail if detail else "")
+            )
         result = subprocess.run(
             ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
             cwd=str(root),
+            env=git_env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
@@ -927,6 +956,10 @@ def _initialize_git_fixture(root, paths):
 
 
 def selftest_end_to_end():
+    _selftest_check(
+        shutil.which("git") is not None,
+        "git not available for ancestor-repo selftest",
+    )
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         _materialize_fixture(root)
@@ -1071,6 +1104,18 @@ def selftest_end_to_end():
             and "binary files skipped: 1" in output,
             "git binary is skipped once and counted: %r" % output,
         )
+        alias = root / "root-alias"
+        alias.symlink_to(root, target_is_directory=True)
+        _selftest_check(
+            alias / "README.md" in _git_paths(alias),
+            "git root reached through a symlink is accepted",
+        )
+        case_alias = root.with_name(root.name.swapcase())
+        if case_alias.exists() and os.path.samefile(case_alias, root):
+            _selftest_check(
+                case_alias / "README.md" in _git_paths(case_alias),
+                "git root with alternate filesystem casing is accepted",
+            )
 
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
@@ -1139,9 +1184,34 @@ def selftest_end_to_end():
             status == 1
             and "enumeration: git" in output
             and "gate-error: git enumeration failed" in output
+            and "corpus-floor" not in output
             and "denylist rules loaded : 2" in output,
             "broken .git fails closed without fallback: %r" % output,
         )
+
+    for ignored in (True, False):
+        with tempfile.TemporaryDirectory() as temporary:
+            outer = Path(temporary) / "outer"
+            outer.mkdir()
+            _git(["-c", "init.defaultBranch=main", "init", "-q"], outer)
+            (outer / ".gitignore").write_text(
+                "inner/\n" if ignored else "", encoding="utf-8"
+            )
+            root = outer / "inner"
+            root.mkdir()
+            _materialize_fixture(root)
+            (root / ".git").mkdir()
+            status, output = _capture_main(
+                ["--root", str(root), "--account-slug", "neutral-owner"]
+            )
+            _selftest_check(
+                status == 1
+                and "enumeration: git" in output
+                and "gate-error: git enumeration failed" in output
+                and "corpus-floor" not in output,
+                "broken .git under ancestor repo (ignored=%s) fails closed: %r"
+                % (ignored, output),
+            )
 
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
