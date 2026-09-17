@@ -542,19 +542,17 @@ policy_order_valid() {
 policy_probe() {
   sed '/^if \[ "$dry_run" -eq 0 \]; then/,$d' "$1" >"$crash/scripts/policy-probe.sh"
   printf '\nadopt_policy_fail probe\n' >>"$crash/scripts/policy-probe.sh"
-  /bin/bash "$crash/scripts/policy-probe.sh" --vault "$crash/vault"
+  /bin/bash "$crash/scripts/policy-probe.sh" --vault "$crash/vault" 2>"$2"
 }
 policy_order_valid "$lint" || fail 'policy override must follow lib-adopt.sh source'
-expect_exit 7 policy_probe "$lint" 2>"$crash/policy.err"
-grep -Fxq 'growth-lint.sh: probe' "$crash/policy.err" || fail 'policy diagnostic changed'
-echo 'M4 real script: order PASS; probe exit 7 (PASS)'
+expect_exit 7 policy_probe "$lint" "$crash/policy-real.err"
+grep -Fxq 'growth-lint.sh: probe' "$crash/policy-real.err" || fail 'policy diagnostic changed'
 
 # Mutation proof: both checks must reject an override moved above the source.
-ruby -e 's=File.read(ARGV[0]); override=s.slice!(/^adopt_policy_fail\(\) \{.*\}\n/); abort "override missing" unless override; s.sub!(/^\. .*lib-adopt\.sh.*$/) { |line| override + line }; File.write(ARGV[1],s)' "$lint" "$crash/scripts/policy-mutant.sh"
+ruby -e 's=File.read(ARGV[0]); override=s.slice!(/^adopt_policy_fail\(\) \{.*\}\n/); abort "override missing" unless override; s.sub!(/^\. .*lib-adopt\.sh.*$/) { |line| override + line }; File.write(ARGV[1],s)' "$lint" "$crash/scripts/policy-mutant.sh" || fail 'mutation fixture could not be built'
 if policy_order_valid "$crash/scripts/policy-mutant.sh"; then fail 'order check accepted moved override'; fi
-expect_exit 3 policy_probe "$crash/scripts/policy-mutant.sh" 2>"$crash/policy.err"
-grep -Fxq 'growth-lint.sh: probe' "$crash/policy.err" || fail 'mutant policy diagnostic changed'
-echo 'M4 moved override: order FAIL; probe exit 3 (expected 7: FAIL) — mutation detected'
+expect_exit 3 policy_probe "$crash/scripts/policy-mutant.sh" "$crash/policy-mutant.err"
+grep -Fxq 'growth-lint.sh: probe' "$crash/policy-mutant.err" || fail 'mutant policy diagnostic changed'
 
 if [ "$failures" -ne 0 ]; then exit 1; fi
 echo 'PASS: test-growth-lint'

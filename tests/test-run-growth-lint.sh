@@ -186,6 +186,36 @@ grep -Fq 'self-growth-lint fail' "$signal_dir/heartbeat.calls" || fail 'signal d
 grep -Fq -- '--reason signal TERM (exit 143);' "$signal_dir/heartbeat.calls" || fail 'signal heartbeat reason was not sent'
 grep -Fq 'finished' "$signal_dir/marker" && fail 'signal child was not terminated'
 
+# TERM during the external heartbeat preserves the reaped child's status and reason.
+cleanup_signal_dir="$test_dir/cleanup-signal"
+mkdir -p "$cleanup_signal_dir/logs"
+make_lint_stub "$cleanup_signal_dir/lint" 3 'damaged output'
+cat >"$cleanup_signal_dir/heartbeat" <<'EOF'
+#!/bin/bash
+printf started >"$SGL_TEST_SIGNAL_MARKER"
+sleep 2
+printf '%s\n' "$*" >>"$SGL_TEST_HEARTBEAT_CALLS"
+EOF
+chmod +x "$cleanup_signal_dir/heartbeat"
+SGL_TEST_LINT_CALLS="$cleanup_signal_dir/lint.calls" \
+SGL_TEST_HEARTBEAT_CALLS="$cleanup_signal_dir/heartbeat.calls" \
+SGL_TEST_SIGNAL_MARKER="$cleanup_signal_dir/marker" \
+SGL_LINT="$cleanup_signal_dir/lint" SGL_HEARTBEAT_TOOL="$cleanup_signal_dir/heartbeat" \
+SGL_LOG_DIR="$cleanup_signal_dir/logs" /bin/bash "$wrapper" &
+cleanup_signal_pid=$!
+cleanup_signal_attempt=0
+while [ ! -e "$cleanup_signal_dir/marker" ] && [ "$cleanup_signal_attempt" -lt 50 ]; do
+  sleep 0.1
+  cleanup_signal_attempt=$((cleanup_signal_attempt + 1))
+done
+[ -e "$cleanup_signal_dir/marker" ] || fail 'cleanup heartbeat tool did not start'
+kill -TERM "$cleanup_signal_pid" 2>/dev/null || fail 'could not signal wrapper during heartbeat'
+wait "$cleanup_signal_pid"
+cleanup_signal_status=$?
+[ "$cleanup_signal_status" -eq 3 ] || fail "cleanup signal wrapper returned $cleanup_signal_status instead of 3"
+grep -Fq 'self-growth-lint fail --reason exit 3 (damaged); see growth-lint-' "$cleanup_signal_dir/heartbeat.calls" || fail 'cleanup signal lost external heartbeat or damaged reason'
+grep -Eq '^status=fail .* exit=3 .* reason=exit 3 \(damaged\);' "$cleanup_signal_dir/logs/growth-lint.heartbeat" || fail 'cleanup signal changed file heartbeat'
+
 # HOME is mandatory even when paths are overridden; a clean environment works once HOME is supplied.
 home_dir="$test_dir/home"
 mkdir -p "$home_dir/logs" "$home_dir/home"
@@ -294,7 +324,7 @@ for job in growth-lint trial-poll; do
       SGL_TEST_LINT_CALLS="$cwd_dir/lint.calls" SGL_TEST_HEARTBEAT_CALLS="$cwd_dir/heartbeat.calls" \
       SGL_LOG_DIR="$cwd_dir/logs" /bin/bash "$root/scripts/run-$job.sh"
   ) 2>"$cwd_dir/optional.stderr" || fail "$job optional CWD-only tool altered child success"
-  grep -Fq 'warning: heartbeat tool missing or not executable:' "$cwd_dir/optional.stderr" || fail "$job did not treat optional CWD-only tool as missing"
+  grep -Fq 'warning: heartbeat tool missing or not executable: sgl-cwd-only-heartbeat' "$cwd_dir/optional.stderr" || fail "$job did not treat optional CWD-only tool as missing"
   [ ! -e "$cwd_dir/heartbeat.calls" ] || fail "$job invoked CWD-only tool"
 done
 

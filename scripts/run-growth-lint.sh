@@ -101,7 +101,7 @@ log_setup_failed() {
       echo "run-growth-lint.sh: warning: heartbeat update failed" >&2
     fi
   else
-    echo "run-growth-lint.sh: warning: heartbeat tool missing or not executable: $heartbeat_tool" >&2
+    echo "run-growth-lint.sh: warning: heartbeat tool missing or not executable: ${SGL_HEARTBEAT_TOOL:-}" >&2
   fi
   exit 2
 }
@@ -121,9 +121,9 @@ signal_name=''
 signal_number=0
 # shellcheck disable=SC2329 # Invoked indirectly by the signal traps below.
 forward_signal() {
+  [ -n "$child_pid" ] || return 0
   signal_name=$1
   signal_number=$2
-  [ -n "$child_pid" ] || return 0
   kill -"$signal_name" -- "-$child_pid" 2>/dev/null || kill -"$signal_name" "$child_pid" 2>/dev/null || :
   deadline=$(( $(date +%s) + 30 ))
   while kill -0 -- "-$child_pid" 2>/dev/null || kill -0 "$child_pid" 2>/dev/null; do
@@ -152,7 +152,8 @@ exec 3>&-
 if [ "$signal_number" -ne 0 ]; then
   lint_status=$((128 + signal_number))
 fi
-trap - TERM INT HUP
+# The child is reaped; retain traps during cleanup without targeting a stale PID.
+child_pid=''
 
 end_seconds=$(date +%s)
 duration_ms=$(((end_seconds - start_seconds) * 1000))
@@ -196,11 +197,12 @@ if [ -x "$heartbeat_tool" ]; then
     echo "run-growth-lint.sh: warning: heartbeat update failed" >&2
   fi
 else
-  echo "run-growth-lint.sh: warning: heartbeat tool missing or not executable: $heartbeat_tool" >&2
+  echo "run-growth-lint.sh: warning: heartbeat tool missing or not executable: ${SGL_HEARTBEAT_TOOL:-}" >&2
 fi
 
 if [ "$lint_status" -eq 1 ]; then
   echo "run-growth-lint.sh: lock busy: skipped (heartbeat ok)" >&2
 fi
 
+trap - TERM INT HUP
 exit "$lint_status"

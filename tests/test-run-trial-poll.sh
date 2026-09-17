@@ -96,6 +96,7 @@ POLL_STATUS=3 SGL_HEARTBEAT_TOOL=/nonexistent SGL_TRIAL_POLL="$recorder" \
   RECORDER_OUTPUT="$required_dir/poll.calls" SGL_LOG_DIR="$required_dir/logs" \
   "$runner" 2>"$required_dir/stderr" || actual=$?
 [ "$actual" -eq 3 ] || fail 'missing tool masked poll failure'
+grep -Fq 'warning: heartbeat tool missing or not executable: /nonexistent' "$required_dir/stderr" || fail 'missing tool warning lost configured name'
 grep -Eq '^status=fail .* exit=3 ' "$required_dir/logs/trial-poll.heartbeat" || fail 'missing tool lost failure heartbeat'
 actual=0
 POLL_STATUS=3 SGL_HEARTBEAT_TOOL="$heartbeat" HEARTBEAT_CALLS="$required_dir/heartbeat.calls" \
@@ -113,6 +114,15 @@ SGL_REQUIRE_HEARTBEAT=1 SGL_PATH="$tmp:/usr/bin:/bin" SGL_HEARTBEAT_TOOL=job-hea
   /bin/bash "$runner" || fail 'required bare heartbeat blocked poll'
 [ -s "$tmp/bare-poll.calls" ] || fail 'bare tool preflight did not run poll'
 grep -Fq 'self-growth-trial-poll ok' "$tmp/bare-heartbeat.calls" || fail 'bare heartbeat was not invoked'
+
+# Optional unresolved bare names retain the configured name in the warning.
+(
+  unset SGL_REQUIRE_HEARTBEAT
+  SGL_PATH=/usr/bin:/bin SGL_HEARTBEAT_TOOL=sgl-no-such-tool \
+    SGL_TRIAL_POLL="$recorder" RECORDER_OUTPUT="$tmp/optional-bare.calls" \
+    SGL_LOG_DIR="$tmp/optional-bare-logs" /bin/bash "$runner"
+) 2>"$tmp/optional-bare.stderr" || fail 'optional missing bare tool altered poll success'
+grep -Fq 'warning: heartbeat tool missing or not executable: sgl-no-such-tool' "$tmp/optional-bare.stderr" || fail 'optional missing bare tool warning lost configured name'
 
 # Both wrappers use the same reason shape for trapped signals.
 cat >"$tmp/signal-poll" <<'EOF'
