@@ -14,12 +14,22 @@ ADOPT_TOOL=growth-lint.sh
 usage() {
   cat >&2 <<'EOF'
 Usage: growth-lint.sh --vault <vault-root> [--now <ISO8601Z>] [--sense-status <file>] [--sensors mine,...] [--dry-run]
+
+Sensing is opt-in via --sensors or --sense-status.
+Exit codes (also in --dry-run; reports are published/printed before 3 or 4):
+  0   clean: no DAMAGED, sensing OK or not requested
+  1   lock busy: skipped without writes
+  2   usage / bad option / bad --now
+  3   DAMAGED: damaged records or failed actions (takes precedence over 4)
+  4   SENSE BROKEN while sensors were requested
+  5   report publication failed
+  127 ruby missing
 EOF
 }
 fail() { echo "growth-lint.sh: $*" >&2; exit 2; }
 file_mtime() { ruby -e 'print File.mtime(ARGV.fetch(0)).to_i' "$1"; }
 
-vault=''; now_override=''; sense_status=''; sensors='mine'; dry_run=0
+vault=''; now_override=''; sense_status=''; sensors=''; dry_run=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --vault|--now|--sense-status|--sensors)
@@ -58,7 +68,7 @@ run() {
 }
 
 if [ "$dry_run" -eq 0 ]; then
-  mkdir -p "$ledger" "$(dirname "$report")" || fail 'cannot create vault directories'
+  mkdir -p "$ledger" || fail 'cannot create vault directories'
   adopt_with_lock "$vault" run
 else
   run

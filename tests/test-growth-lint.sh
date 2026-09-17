@@ -12,6 +12,12 @@ cleanup() { rm -rf "$vault"; }
 trap cleanup EXIT HUP INT TERM
 fail() { echo "FAIL: $*" >&2; failures=$((failures + 1)); }
 assert_contains() { printf '%s' "$1" | grep -Fq "$2" || fail "expected [$2] in [$1]"; }
+expect_exit() {
+  expected=$1; shift
+  actual=0
+  "$@" || actual=$?
+  [ "$actual" -eq "$expected" ] || fail "expected exit $expected, got $actual: $*"
+}
 state_of() { ruby -ryaml -e 'puts (YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0]))["state"]' "$1"; }
 assert_pending_confirmation() {
   ruby -ryaml -e '
@@ -58,6 +64,16 @@ set_verified_confirmation() {
   '
 }
 
+# A future effect-report deadline is healthy, not a future observation (#62).
+call_propose future-due__community 'Future report deadline'; future_due="$ledger/future-due__community.md"
+set_field "$future_due" state ADOPTED; set_field "$future_due" state_entered_at 2026-07-31T00:00:00Z
+set_field "$future_due" report_due 2026-08-31T00:00:00Z; set_field "$future_due" proposal_attempt 1
+set_verified_confirmation "$future_due" future-due__community 1 2026-07-31T00:00:00Z
+expect_exit 0 "$lint" --vault "$vault" --now 2026-08-01T00:00:00Z >/dev/null
+future_queue="$vault/25_review-pending/self-growth-queue.md"
+! grep -Fq 'future timestamp: report_due' "$future_queue" || fail 'future report deadline rejected as a future timestamp'
+! grep -Fq 'DAMAGED future-due__community' "$future_queue" || fail 'future report deadline classified as DAMAGED'
+
 # Use real intake, then hand-edit the current state and SLA clock.
 call_propose trial__community 'Trial item'; trial="$ledger/trial__community.md"
 set_field "$trial" state TRIALING; set_field "$trial" state_entered_at 2026-07-24T00:00:00Z; set_field "$trial" executor_agent beta
@@ -76,7 +92,7 @@ set_verified_confirmation "$adopted" adopted__community 1 2026-07-16T00:00:00Z
 mkdir -p "$(dirname "$vault/45_ai-systems/self-growth/sense-status.log")"
 printf '%s\n' '2026-08-01T00:00:00Z mine FAIL feed unavailable' > "$vault/45_ai-systems/self-growth/sense-status.log"
 
-"$lint" --vault "$vault" --now 2026-08-01T00:00:00Z >/dev/null || fail 'lint failed'
+expect_exit 4 "$lint" --vault "$vault" --sensors mine --now 2026-08-01T00:00:00Z >/dev/null
 assert_contains "$(state_of "$trial")" DLQ
 assert_contains "$(state_of "$expired")" EXPIRED
 assert_pending_confirmation "$expired" 'PENDING_OWNER expiry corrupted canonical pending owner confirmation'
@@ -100,7 +116,7 @@ grep -Fq 'Run `EFFECT_REPORT` or `SHO_WAIVER`' "$queue" || fail 'effect report a
 
 # Missing sense status is also fail-visible.
 rm -f "$vault/45_ai-systems/self-growth/sense-status.log"
-"$lint" --vault "$vault" --now 2026-08-01T00:00:00Z >/dev/null || fail 'lint with missing status failed'
+expect_exit 4 "$lint" --vault "$vault" --sensors mine --now 2026-08-01T00:00:00Z >/dev/null
 grep -Fq 'SENSE BROKEN' "$queue" || fail 'missing sensor status not visible'
 # Escalation pin is sticky on the second run, and the event is appended only once.
 grep -Fq 'adopted__community' "$queue" || fail 'unresolved effect-report escalation dropped from queue on rerun'
@@ -200,7 +216,7 @@ Mismatch fixture.
 EOF
 chmod 600 "$exact"
 mkdir -p "$v2/45_ai-systems/self-growth"; printf '%s\n' '2026-08-01T00:00:00Z mine OK ok' > "$v2/45_ai-systems/self-growth/sense-status.log"
-"$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >/dev/null || fail 'hardening lint failed'
+expect_exit 3 "$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >/dev/null
 assert_contains "$(state_of "$exact")" EXPIRED
 [ "$(ruby -e 'printf "%o", File.stat(ARGV.fetch(0)).mode & 0777' "$exact")" = 600 ] || fail 'rewritten record mode not preserved'
 [ "$(state_of "$form_mismatch")" = PENDING_OWNER ] || fail 'invalid v2 state/form record mutated before damage classification'
@@ -214,7 +230,7 @@ call_propose card__community 'Damaged card'; card="$l2/card__community.md"
 set_field "$card" state PENDING_OWNER; set_field "$card" state_entered_at 2026-07-20T00:00:00Z
 set_field "$card" links broken
 set_field "$card" risk_tier T1
-"$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >/dev/null || fail 'damaged card lint failed'
+expect_exit 3 "$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >/dev/null
 grep -Fq 'card__community' "$q2" || fail 'damaged card was not fail-visible'
 
 # A sealed T1 quorum renders the per-seat vote table and dissent text verbatim.
@@ -236,7 +252,7 @@ sealed: true
 
 security: Need rollback proof before rollout.
 EOF
-"$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >/dev/null || fail 'sealed quorum lint failed'
+expect_exit 3 "$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >/dev/null
 grep -Fq '| utility | GO | Faster review |' "$q2" || fail 'utility verdict missing from card'
 grep -Fq '| cost | WATCH | Meter first |' "$q2" || fail 'cost verdict missing from card'
 grep -Fq '| security | NO | Need rollback proof |' "$q2" || fail 'security verdict missing from card'
@@ -245,12 +261,12 @@ grep -Fq '> security: Need rollback proof before rollout.' "$q2" || fail 'verbat
 # A dead-owner and ownerless old lock are safely quarantined and recovered.
 mkdir "$l2/.lock"; printf '%s %s %s\n' 999999 "$(hostname)" old > "$l2/.lock/owner"; touch -t 202607010000 "$l2/.lock"
 dead_lock_out=$(mktemp "${TMPDIR:-/tmp}/growth-stale-dead.XXXXXX")
-"$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >"$dead_lock_out" || fail 'dead stale lock not recovered'
+expect_exit 3 "$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >"$dead_lock_out"
 grep -Fq "STALE_LOCK_BROKEN $l2/.lock" "$dead_lock_out" || fail 'dead stale lock message changed'
 rm -f "$dead_lock_out"
 mkdir "$l2/.lock"; touch -t 202607010000 "$l2/.lock"
 ownerless_lock_out=$(mktemp "${TMPDIR:-/tmp}/growth-stale-ownerless.XXXXXX")
-"$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >"$ownerless_lock_out" || fail 'ownerless stale lock not recovered'
+expect_exit 3 "$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >"$ownerless_lock_out"
 grep -Fq "STALE_LOCK_BROKEN (ownerless) $l2/.lock" "$ownerless_lock_out" || fail 'ownerless stale lock message changed'
 rm -f "$ownerless_lock_out"
 
@@ -269,10 +285,10 @@ rmdir "$l2/.lock" 2>/dev/null || true
 
 # Latest malformed/future sensor observations must win over older OK entries.
 printf '%s\n' '2026-08-01T00:00:00Z mine OK old' 'not-a-time mine FAIL corrupt' > "$v2/45_ai-systems/self-growth/sense-status.log"
-"$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >/dev/null || fail 'malformed sensor lint failed'
+expect_exit 3 "$lint" --vault "$v2" --sensors mine --now 2026-08-01T00:00:00Z >/dev/null
 grep -Fq 'malformed latest status' "$q2" || fail 'malformed latest sensor was ignored'
 printf '%s\n' '2030-01-01T00:00:00Z mine OK future' > "$v2/45_ai-systems/self-growth/sense-status.log"
-"$lint" --vault "$v2" --now 2026-08-01T00:00:00Z >/dev/null || fail 'future sensor lint failed'
+expect_exit 3 "$lint" --vault "$v2" --sensors mine --now 2026-08-01T00:00:00Z >/dev/null
 grep -Fq 'future timestamp' "$q2" || fail 'future sensor was not broken'
 rm -rf "$v2"; vault=$vault_save; ledger=$ledger_save
 
@@ -357,7 +373,7 @@ Legacy evidence.
 
 Legacy observation.
 EOF
-"$lint" --vault "$authv" --now 2026-08-01T00:00:00Z >/dev/null || fail 'legacy correlation lint failed'
+expect_exit 0 "$lint" --vault "$authv" --now 2026-08-01T00:00:00Z >/dev/null
 grep -Fq "$legacy_topic: authorization-reference-unknown" "$authq" || fail 'legacy unknown correlation token missing'
 
 missing_topic=missing-artifact__community
@@ -427,11 +443,11 @@ Evidence.
 
 Observation.
 EOF
-"$lint" --vault "$authv" --now 2026-08-01T00:00:00Z >/dev/null || fail 'missing artifact lint failed'
+expect_exit 0 "$lint" --vault "$authv" --now 2026-08-01T00:00:00Z >/dev/null
 grep -Fq "$missing_topic: authorization-artifact-missing" "$authq" || fail 'missing artifact status token missing'
 sed -i.bak 's/- Principal: sho/- Principal: other/' "$authv/30_decisions/missing-adoption.md" &&
   rm -f "$authv/30_decisions/missing-adoption.md.bak"
-"$lint" --vault "$authv" --now 2026-08-01T00:00:00Z >/dev/null || fail 'damaged owner block lint failed'
+expect_exit 0 "$lint" --vault "$authv" --now 2026-08-01T00:00:00Z >/dev/null
 grep -Fq "$missing_topic: damaged adoption correlation" "$authq" || fail 'damaged owner block was not classified damaged'
 
 # Lock age is strictly greater than 300 seconds. A deterministic PATH shim
@@ -448,10 +464,54 @@ if PATH="$fakebin:$PATH" TEST_LOCK_NOW=1300 "$lint" --vault "$authv" --now 2026-
   fail '300-second ownerless lock was broken'
 fi
 [ -d "$authl/.lock" ] || fail '300-second lock disappeared'
-PATH="$fakebin:$PATH" TEST_LOCK_NOW=1301 "$lint" --vault "$authv" --now 2026-08-01T00:00:00Z >/dev/null || fail '301-second ownerless lock was not recovered'
+PATH="$fakebin:$PATH" TEST_LOCK_NOW=1301 expect_exit 0 "$lint" --vault "$authv" --now 2026-08-01T00:00:00Z >/dev/null
 [ ! -e "$authl/.lock" ] || fail '301-second lock remained'
 
 rm -rf "$authv"; vault=$vault_save; ledger=$ledger_save
+
+# Exit contract: publication first, same health codes for dry-run, damage wins.
+contract="$vault/exit-contract"
+mkdir -p "$contract/45_ai-systems/self-growth/proposals"
+contract_queue="$contract/25_review-pending/self-growth-queue.md"
+for mode in write dry; do
+  # Positional parameters avoid empty-array expansion under Bash 3.2/set -u.
+  set --
+  [ "$mode" != dry ] || set -- --dry-run
+  rm -f "$contract/45_ai-systems/self-growth/proposals/broken-record.md" "$contract_queue"
+  expect_exit 0 "$lint" --vault "$contract" "$@" >"$vault/contract.out"
+  if [ "$mode" = dry ]; then result="$vault/contract.out"; else result="$contract_queue"; fi
+  grep -Fq 'Sensing disabled (no sensors requested)' "$result" || fail 'sensor-less detail absent'
+  ! grep -Fq 'SENSE BROKEN' "$result" || fail 'sensor-less run reported broken sensing'
+  expect_exit 4 "$lint" --vault "$contract" --sensors mine "$@" >"$vault/contract.out" 2>"$vault/contract.err"
+  grep -Fq 'SENSE BROKEN' "$result" || fail 'requested sensing banner absent'
+  grep -Fq 'growth-lint: exit 4 — SENSE BROKEN' "$vault/contract.err" || fail 'sense exit summary absent'
+  printf 'garbage: not a record\n' >"$contract/45_ai-systems/self-growth/proposals/broken-record.md"
+  expect_exit 3 "$lint" --vault "$contract" "$@" >"$vault/contract.out" 2>"$vault/contract.err"
+  grep -Fq 'DAMAGED broken-record.md' "$result" || fail 'damage report absent before exit 3'
+  grep -Fq 'growth-lint: exit 3 — DAMAGED: 1' "$vault/contract.err" || fail 'damage exit summary absent'
+  expect_exit 3 "$lint" --vault "$contract" --sensors mine "$@" >"$vault/contract.out"
+  grep -Fq 'SENSE BROKEN' "$result" || fail 'combined failure lost sensing banner'
+  grep -Fq 'RUN ERRORS: 1' "$result" || fail 'combined failure lost damage banner'
+  [ "$mode" != dry ] || [ ! -e "$contract_queue" ] || fail 'dry-run wrote report'
+done
+rm -f "$contract/45_ai-systems/self-growth/proposals/broken-record.md"
+expect_exit 0 "$lint" --vault "$contract" --sensors '   ' >/dev/null
+expect_exit 4 "$lint" --vault "$contract" --sense-status "$contract/missing.log" >/dev/null
+printf '%s mine OK healthy\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >"$contract/status.log"
+expect_exit 0 "$lint" --vault "$contract" --sense-status "$contract/status.log" >/dev/null
+expect_exit 0 "$lint" --vault "$contract" --sense-status "$contract/status.log" --sensors mine >/dev/null
+expect_exit 2 "$lint" --vault "$contract" --now bad >/dev/null
+expect_exit 2 "$lint" --vault "$contract" --now bad --dry-run >/dev/null
+expect_exit 2 "$lint" --vault "$contract" --unknown >/dev/null
+# A directory at the report path forces rename failure without permission assumptions.
+rm -f "$contract_queue"
+mkdir "$contract_queue"
+expect_exit 5 "$lint" --vault "$contract" >/dev/null
+[ -z "$(find "$contract/25_review-pending" -name '*.growth-lint.*' -print)" ] || fail 'failed publication leaked temp file'
+rmdir "$contract_queue" "$contract/25_review-pending"
+printf 'not a directory\n' >"$contract/25_review-pending"
+expect_exit 5 "$lint" --vault "$contract" >/dev/null
+rm -rf "$contract"
 
 if [ "$failures" -ne 0 ]; then exit 1; fi
 echo 'PASS: test-growth-lint'

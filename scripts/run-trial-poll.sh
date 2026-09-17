@@ -2,6 +2,11 @@
 # Cron/launchd entrypoint for trial-poll with logging and dead-man heartbeat.
 # Compatible with macOS Bash 3.2.
 set -u
+heartbeat_tool=${SGL_HEARTBEAT_TOOL:-}
+if [ "${SGL_REQUIRE_HEARTBEAT:-0}" = 1 ] && [ ! -x "$heartbeat_tool" ]; then
+  echo "run-trial-poll.sh: heartbeat tool required but missing: $heartbeat_tool" >&2
+  exit 2
+fi
 PATH=${SGL_PATH:-/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin}
 export PATH
 if ! command -v ruby >/dev/null 2>&1; then
@@ -53,8 +58,24 @@ root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 vault=${SGL_VAULT:-"$HOME/SharedHub/family-vault"}
 workspace=${SGL_ENGINE_WORKSPACE:-"$HOME/claude-workspace/sgl-engine-workspace"}
 poll=${SGL_TRIAL_POLL:-"$root/scripts/trial-poll.sh"}
-heartbeat_tool=${SGL_HEARTBEAT_TOOL:-}
 log_dir=${SGL_LOG_DIR:-"$HOME/.claude/logs/self-growth"}
+
+heartbeat_file=${SGL_HEARTBEAT_FILE:-"$log_dir/trial-poll.heartbeat"}
+
+write_file_heartbeat() {
+  # A temp file in the destination directory keeps rename atomic.
+  heartbeat_tmp=''
+  heartbeat_reason=$(printf '%s' "$3" | tr '\r\n' '  ')
+  if [ ! -d "$heartbeat_file" ] &&
+     heartbeat_tmp=$(mktemp "$heartbeat_file.tmp.XXXXXX") &&
+     printf 'status=%s at=%s exit=%s duration_ms=%s reason=%s\n' \
+       "$1" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$2" "$duration_ms" "$heartbeat_reason" >"$heartbeat_tmp" &&
+     mv -f "$heartbeat_tmp" "$heartbeat_file"; then
+    return 0
+  fi
+  [ -z "$heartbeat_tmp" ] || rm -f "$heartbeat_tmp"
+  echo "run-trial-poll.sh: warning: heartbeat file update failed: $heartbeat_file" >&2
+}
 
 if ! mkdir -p "$log_dir"; then
   echo "run-trial-poll.sh: cannot create log directory: $log_dir" >&2
@@ -70,6 +91,7 @@ log_setup_failed() {
   echo "run-trial-poll.sh: log setup failed: $logfile" >&2
   end_seconds=$(date +%s)
   duration_ms=$(((end_seconds - start_seconds) * 1000))
+  write_file_heartbeat fail 2 'log setup failed'
   if [ -x "$heartbeat_tool" ]; then
     if ! "$heartbeat_tool" self-growth-trial-poll fail --reason 'log setup failed' --duration-ms "$duration_ms"; then
       echo "run-trial-poll.sh: warning: heartbeat update failed" >&2
@@ -135,21 +157,25 @@ if ! find "$log_dir" -maxdepth 1 -type f -name 'trial-poll-*.log' -mtime +30 -de
 fi
 
 log_basename=$(basename -- "$logfile")
-if [ -x "$heartbeat_tool" ]; then
+heartbeat_status=ok
+reason='-'
+if [ "$poll_status" -ne 0 ]; then
+  heartbeat_status=fail
   if [ -n "$signal_name" ]; then
     reason="signal $signal_name; see $log_basename"
-    if ! "$heartbeat_tool" self-growth-trial-poll fail --reason "$reason" --duration-ms "$duration_ms"; then
-      echo "run-trial-poll.sh: warning: heartbeat update failed" >&2
-    fi
-  elif [ "$poll_status" -eq 0 ]; then
-    if ! "$heartbeat_tool" self-growth-trial-poll ok --duration-ms "$duration_ms"; then
-      echo "run-trial-poll.sh: warning: heartbeat update failed" >&2
-    fi
   else
     reason="exit $poll_status; see $log_basename"
-    if ! "$heartbeat_tool" self-growth-trial-poll fail --reason "$reason" --duration-ms "$duration_ms"; then
-      echo "run-trial-poll.sh: warning: heartbeat update failed" >&2
-    fi
+  fi
+fi
+write_file_heartbeat "$heartbeat_status" "$poll_status" "$reason"
+if [ -x "$heartbeat_tool" ]; then
+  if [ "$heartbeat_status" = ok ]; then
+    "$heartbeat_tool" self-growth-trial-poll ok --duration-ms "$duration_ms"
+  else
+    "$heartbeat_tool" self-growth-trial-poll fail --reason "$reason" --duration-ms "$duration_ms"
+  fi
+  if [ "$?" -ne 0 ]; then
+    echo "run-trial-poll.sh: warning: heartbeat update failed" >&2
   fi
 else
   echo "run-trial-poll.sh: warning: heartbeat tool missing or not executable: $heartbeat_tool" >&2
