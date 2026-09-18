@@ -148,7 +148,9 @@ The acquire path retries once immediately and then nine more times at 0.5-second
 For the frozen `growth-lint` heartbeat compatibility path, shared-lock busy
 remains exit 1 with the exact skipped-without-writes message
 `run-growth-lint.sh: lock busy: skipped (heartbeat ok)`. By contrast,
-`lock-quarantine-conflict` remains a fail-closed exit 3. Unequal legacy/shared
+`lock-quarantine-conflict` is a fail-closed exit 7 (`lock-conflict`) for
+`growth-lint.sh`, reported by the wrapper as `exit 7 (lock-conflict)`. Other
+`adopt-*` verbs source `lib-adopt.sh` without this override and keep exit 3. Unequal legacy/shared
 hostname tokens fail safe by leaving the lock busy rather than treating the
 owner as breakable. Treat that as a deployment caveat, not a bug: WSL2 clones
 and VM images can legitimately reuse or drift hostnames, so prove liveness on

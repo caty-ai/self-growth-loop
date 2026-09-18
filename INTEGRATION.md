@@ -31,8 +31,8 @@ Re-verify (run the integration test below) before deploying against any newer en
 
 | launchd label | Schedule | Entrypoint | Dead-man coverage |
 |---|---|---|---|
-| `com.alpha.self-growth.growth-lint` | Daily at 07:00 host-local (system TZ). The invariant is "after the morning feed pull", not a fixed wall-clock hour — adjust to your deployment's rhythm. | `scripts/run-growth-lint.sh` | Dead-man jobs framework (private infrastructure): heartbeat `self-growth-lint.json` via `job-heartbeat`, watched by an external watchdog. Optional — the loop degrades to manual log checks without it. |
-| `com.alpha.self-growth.trial-poll` | Hourly (`StartInterval` 3600) | `scripts/run-trial-poll.sh` | Heartbeat `self-growth-trial-poll` via `job-heartbeat`. Watchdog manifest registration follows the first live enqueue. |
+| `com.alpha.self-growth.growth-lint` | Daily at 07:00 host-local (system TZ). The invariant is "after the morning feed pull", not a fixed wall-clock hour — adjust to your deployment's rhythm. | `scripts/run-growth-lint.sh` | File heartbeat after every child run + optional external tool. |
+| `com.alpha.self-growth.trial-poll` | Hourly (`StartInterval` 3600) | `scripts/run-trial-poll.sh` | File heartbeat after every child run + optional external tool. |
 
 The plists under `ops/` are templates: replace the `{{HOME}}` placeholder with your absolute home directory before installing (launchd does not expand `$HOME` or `~`), e.g. `sed "s|{{HOME}}|$HOME|g" ops/com.alpha.self-growth.growth-lint.plist > ~/Library/LaunchAgents/com.alpha.self-growth.growth-lint.plist`.
 
@@ -40,7 +40,47 @@ Before `launchctl bootstrap`, run `mkdir -p ~/.claude/logs/self-growth`. launchd
 
 The timestamped `growth-lint-<ts>.log` and `trial-poll-<ts>.log` files are the authoritative job-output logs. The launchd `.out/.err` captures contain wrapper warnings only. Each wrapper prunes its own timestamped logs older than 30 days.
 
-The pinned heartbeat interface is `job-heartbeat <job> ok|fail [--reason R] [--duration-ms N]` (provided by the operator's private monitoring infrastructure; path supplied via `SGL_HEARTBEAT_TOOL`, unset by default — e.g. an `EnvironmentVariables` entry in the installed plist. When the tool is absent the wrappers log a warning and continue — see the `[ -x "$heartbeat_tool" ]` guards in `scripts/run-*.sh`). A skipped run caused by lint exit 1 (lock busy) reports `ok`, because the dead-man contract records that cron ran, while the wrapper still returns exit 1.
+`growth-lint.sh` has the following exit-code contract (also printed by `--help`):
+
+| Exit | Meaning |
+|---|---|
+| 0 | Clean: no DAMAGED, sensing OK or not requested. |
+| 1 | Lock busy — skipped without writes. |
+| 2 | Usage / bad option / bad `--now` / precondition failure (ledger dir, lock identity). |
+| 3 | DAMAGED: damaged records or failed actions (`errors > 0`). |
+| 4 | SENSE BROKEN while sensing was requested. |
+| 5 | Report publication failed. |
+| 6 | Internal error (uncaught interpreter failure). |
+| 7 | Lock-conflict (lock quarantine conflict). |
+| 127 | Ruby missing. |
+
+The queue report is published atomically before exit 3 or 4; damage takes precedence (exit 3) when both apply, and the report shows both banners. `--dry-run` prints the report to stdout with the same codes. Non-zero health exits include a one-line stderr summary. Standalone lint is sensor-less by default: sensing is requested only when `--sensors` is non-empty after trimming or a non-empty `--sense-status` path is supplied. Without either, the report says `Sensing disabled (no sensors requested)`; the PIPELINE QUIET warning remains independent. The scheduled wrapper keeps `SGL_SENSORS=mine` as its default.
+
+The optional external heartbeat interface is `job-heartbeat <job> ok|fail [--reason R] [--duration-ms N]`, provided by the operator via `SGL_HEARTBEAT_TOOL` (unset by default). The growth-lint wrapper reports `ok` only for child exits 0 and 1. Exit 1 means "cron ran, skipped" and prints `lock busy: skipped (heartbeat ok)`. All other child exits report `fail` with `exit N (<meaning>); see <log basename>` (e.g. `damaged`, `sense-broken`, `report-write-failed`, `internal-error`, `lock-conflict`, `usage-or-precondition`, `command-missing`). The `command-missing` reason for exit 127 covers ruby-or-lint missing (including an unresolved `SGL_LINT` command). The trial-poll wrapper reports `ok` only for exit 0 and `fail` otherwise. Both wrappers preserve the child's exit status, including signal-derived failures. Trapped signals use `signal <NAME> (exit N); see <log basename>`.
+
+Bare tool names are resolved on `SGL_PATH` (or the default wrapper PATH); paths containing `/` are used directly. By default, an unset or non-executable external tool produces a warning and the wrapper continues. Set `SGL_REQUIRE_HEARTBEAT=1` to enforce it: if the tool is missing, the wrapper prints `run-<job>.sh: heartbeat tool required but missing: <configured value>` (the configured `SGL_HEARTBEAT_TOOL` value, which may be a bare name or empty when unset) and exits 2 before running the child or any other setup. An executable tool that returns failure produces a warning without changing the child's status.
+
+Both wrappers always attempt to write a file heartbeat after the child finishes, before invoking the optional external tool. The default paths are `$SGL_LOG_DIR/growth-lint.heartbeat` and `$SGL_LOG_DIR/trial-poll.heartbeat`, where `SGL_LOG_DIR` defaults to `~/.claude/logs/self-growth`. Override each job's path with `SGL_HEARTBEAT_FILE`; its parent directory must already exist. The file contains one line, published using a temporary file and atomic rename:
+
+```text
+status=<ok|fail> at=<UTC ISO8601Z> exit=<N> duration_ms=<N> reason=<text or ->
+```
+
+The file uses the same status as the external heartbeat, including `fail` for damaged vaults. File publication failure warns without masking the child's exit. Logfile setup failure also attempts a `fail` heartbeat (exit 2); preflight failures for a missing required heartbeat tool (2), missing Ruby (127), unset or empty HOME (2), or failure to create the log directory (2) do not write a file heartbeat, so the observer must check staleness as well as status.
+
+Install these independent checks in an operator-owned cron/launchd job (adjust paths for overrides). They print an alert for a missing, stale, or failing heartbeat; route that output to your monitoring destination. The checks use Bash 3.2 / BSD `find` compatible syntax. Use a 26-hour window for daily growth-lint:
+
+```sh
+f=~/.claude/logs/self-growth/growth-lint.heartbeat; [ -n "$(find "$f" -mmin -1560 2>/dev/null)" ] && grep -q '^status=ok ' "$f" || echo "growth-lint dead or failing: $(cat "$f" 2>/dev/null)"
+```
+
+Use a 2-hour window for hourly trial-poll:
+
+```sh
+f=~/.claude/logs/self-growth/trial-poll.heartbeat; [ -n "$(find "$f" -mmin -120 2>/dev/null)" ] && grep -q '^status=ok ' "$f" || echo "trial-poll dead or failing: $(cat "$f" 2>/dev/null)"
+```
+
+**Migration note:** from this version a damaged vault or broken sensing turns the scheduled job red (exit 3/4, heartbeat fail) — the first night after upgrading, expect alerts if your vault already has damaged records or `sense-status.log` is missing.
 
 `RunAtLoad` is false. If the machine is powered off at fire time, launchd does not run this job later as a catch-up; the watchdog staleness alert is the designed catch.
 

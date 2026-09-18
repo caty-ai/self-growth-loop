@@ -105,7 +105,7 @@ bash scripts/growth-lint.sh --vault /tmp/sgl-demo-vault
 cat /tmp/sgl-demo-vault/25_review-pending/self-growth-queue.md
 ```
 
-You just ran the loop's bookkeeping end to end: a proposal record was created, linted, and reported. (The report will shout `SENSE BROKEN` — expected: a standalone demo has no feed collector wired in.) Undo everything with `rm -rf /tmp/sgl-demo-vault` — the repo itself was never written to.
+You just ran the loop's bookkeeping end to end: a proposal record was created, linted, and reported. Sensing is opt-in via `--sensors mine`; the scheduled wrapper enables it by default. Undo everything with `rm -rf /tmp/sgl-demo-vault` — the repo itself was never written to.
 
 <details>
 <summary>Run the full test suite (needs the engine)</summary>

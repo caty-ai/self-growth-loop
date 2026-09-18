@@ -105,7 +105,7 @@ bash scripts/growth-lint.sh --vault /tmp/sgl-demo-vault
 cat /tmp/sgl-demo-vault/25_review-pending/self-growth-queue.md
 ```
 
-至此，你已经完整跑通了这个循环的记账流程：创建了一条提案记录，做了巡检，并生成了报告。（报告里会出现 `SENSE BROKEN` 的提示——这是预期行为：独立演示环境本来就没有接入信息源收集器。）用 `rm -rf /tmp/sgl-demo-vault` 即可撤销一切——仓库本身自始至终没有被写入过任何内容。
+至此，你已经完整跑通了这个循环的记账流程：创建了一条提案记录，做了巡检，并生成了报告。信息源检测需通过 `--sensors mine` 显式启用；定时运行的 wrapper 默认启用此功能。用 `rm -rf /tmp/sgl-demo-vault` 即可撤销一切——仓库本身自始至终没有被写入过任何内容。
 
 <details>
 <summary>运行完整测试套件（需要引擎）</summary>

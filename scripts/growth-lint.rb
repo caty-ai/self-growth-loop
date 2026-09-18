@@ -16,7 +16,10 @@ rescue ArgumentError
   nil
 end
 now = ENV['NOW_OVERRIDE'].to_s.empty? ? Time.now.utc : ts(ENV['NOW_OVERRIDE'])
-abort 'growth-lint.sh: --now must be ISO8601 with an explicit timezone' unless now
+unless now
+  warn 'growth-lint: exit 2 — --now must be ISO8601 with an explicit timezone'
+  exit 2
+end
 now_s = now.strftime('%Y-%m-%dT%H:%M:%SZ')
 MAX_CORRELATED_RECORD_BYTES = 1_048_576
 
@@ -306,7 +309,7 @@ paths.each do |path|
       end
     end
     if original=='ADOPTED' && !data['report_due'].to_s.empty?
-      due=ts(data['report_due']); raise 'future timestamp: report_due' if due && due>now+300
+      due=ts(data['report_due']) # a deadline legitimately lies in the future; only overdue is tracked (#62)
       resolved=body.each_line.any? { |l| l.match?(/\b(?:EFFECT_REPORT|SHO_WAIVER)\b/) && !l.match?(/\bEFFECT_REPORT_OVERDUE\b/) }
       if due && due<now && !resolved
         days=(now-due)/86400.0; overdue << "#{topic} — effect report overdue #{format('%.1f',days)}d (due #{data['report_due']})"
@@ -344,9 +347,12 @@ end
 quotas=Hash.new(0); records.each { |state,data| quotas[data['executor_agent'].to_s.empty? ? '(missing executor_agent)' : data['executor_agent'].to_s]+=1 if state=='TRIALING' }
 
 sense=[]; broken=false; sp=ENV['SENSE_STATUS'].to_s; sp=File.join(vault,'45_ai-systems/self-growth/sense-status.log') if sp.empty?; latest={}
-if !File.file?(sp); broken=true; sense << "missing status file: #{sp}"
+requested = !ENV['SENSORS'].to_s.strip.empty? || !ENV['SENSE_STATUS'].to_s.empty?
+if !requested; sense << 'Sensing disabled (no sensors requested)'
+elsif !File.file?(sp); broken=true; sense << "missing status file: #{sp}"
 else
-  File.foreach(sp).with_index { |line,i| f=line.strip.split(/\s+/,4); latest[f[1] || "line-#{i+1}"]=f }; ENV['SENSORS'].to_s.split(',').map(&:strip).reject(&:empty?).each { |s| latest[s]=nil unless latest.key?(s) }
+  File.foreach(sp).with_index { |line,i| next if line.strip.empty?; f=line.strip.split(/\s+/,4); latest[f[1] || "line-#{i+1}"]=f }; ENV['SENSORS'].to_s.split(',').map(&:strip).reject(&:empty?).each { |s| latest[s]=nil unless latest.key?(s) }
+  if latest.empty?; broken=true; sense << "status file has no sensor entries: #{sp}" end
   latest.keys.sort.each do |sensor|
     f=latest[sensor]
     if !f; broken=true; sense << "#{sensor}: BROKEN missing from status log (expected by roster)"
@@ -362,14 +368,25 @@ values={'GENERATED_AT'=>now_s,'LEDGER_DIR'=>ledger,'RUN_BANNER'=>(errors>0 ? "> 
 out=File.read(template); values.each { |k,v| out.gsub!("{{#{k}}}",v) }
 if dry then puts out
 else
-  FileUtils.mkdir_p(File.dirname(report)); temp="#{report}.growth-lint.#{$$}"
+  temp="#{report}.growth-lint.#{$$}"
   begin
+    FileUtils.mkdir_p(File.dirname(report))
     File.open(temp,'w') { |f| f.write(out); f.flush; f.fsync }
     File.rename(temp,report)
     # dir fsync is best-effort; write+rename failures above must stay fatal
     begin File.open(File.dirname(report),File::RDONLY) { |d| d.fsync } rescue SystemCallError; end
     puts "WROTE #{report}"
   rescue => e
-    abort "growth-lint: report publication FAILED (#{e.class}: #{e.message}) — previous report at #{report} may be stale"
+    warn "growth-lint: exit 5 — report publication FAILED (#{e.class}: #{e.message}) — previous report at #{report} may be stale"
+    exit 5
   ensure File.delete(temp) if File.exist?(temp) end
+end
+
+# Publish (or print in dry-run) before signalling health to the caller.
+if errors > 0
+  warn "growth-lint: exit 3 — DAMAGED: #{errors}"
+  exit 3
+elsif broken
+  warn 'growth-lint: exit 4 — SENSE BROKEN'
+  exit 4
 end

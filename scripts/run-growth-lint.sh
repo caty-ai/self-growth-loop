@@ -2,8 +2,17 @@
 # Cron/launchd entrypoint for growth-lint with logging and dead-man heartbeat.
 # Compatible with macOS Bash 3.2.
 set -u
+heartbeat_tool=${SGL_HEARTBEAT_TOOL:-}
 PATH=${SGL_PATH:-/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin}
 export PATH
+case "$heartbeat_tool" in
+  ''|*/*) ;;
+  *) heartbeat_tool=$(command -v "$heartbeat_tool" 2>/dev/null) || heartbeat_tool='' ;;
+esac
+if [ "${SGL_REQUIRE_HEARTBEAT:-0}" = 1 ] && [ ! -x "$heartbeat_tool" ]; then
+  echo "run-growth-lint.sh: heartbeat tool required but missing: ${SGL_HEARTBEAT_TOOL:-}" >&2
+  exit 2
+fi
 if ! command -v ruby >/dev/null 2>&1; then
   echo "run-growth-lint.sh: ruby not found on PATH; install ruby to use this repo's scripts" >&2
   exit 127
@@ -53,8 +62,24 @@ root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 vault=${SGL_VAULT:-"$HOME/SharedHub/family-vault"}
 sensors=${SGL_SENSORS:-mine}
 lint=${SGL_LINT:-"$root/scripts/growth-lint.sh"}
-heartbeat_tool=${SGL_HEARTBEAT_TOOL:-}
 log_dir=${SGL_LOG_DIR:-"$HOME/.claude/logs/self-growth"}
+
+heartbeat_file=${SGL_HEARTBEAT_FILE:-"$log_dir/growth-lint.heartbeat"}
+
+write_file_heartbeat() {
+  # A temp file in the destination directory keeps rename atomic.
+  heartbeat_tmp=''
+  heartbeat_reason=$(printf '%s' "$3" | tr '\r\n' '  ')
+  if [ ! -d "$heartbeat_file" ] &&
+     heartbeat_tmp=$(mktemp "$heartbeat_file.tmp.XXXXXX") &&
+     printf 'status=%s at=%s exit=%s duration_ms=%s reason=%s\n' \
+       "$1" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$2" "$4" "$heartbeat_reason" >"$heartbeat_tmp" &&
+     mv -f "$heartbeat_tmp" "$heartbeat_file"; then
+    return 0
+  fi
+  [ -z "$heartbeat_tmp" ] || rm -f "$heartbeat_tmp"
+  echo "run-growth-lint.sh: warning: heartbeat file update failed: $heartbeat_file" >&2
+}
 
 if ! mkdir -p "$log_dir"; then
   echo "run-growth-lint.sh: cannot create log directory: $log_dir" >&2
@@ -70,12 +95,13 @@ log_setup_failed() {
   echo "run-growth-lint.sh: log setup failed: $logfile" >&2
   end_seconds=$(date +%s)
   duration_ms=$(((end_seconds - start_seconds) * 1000))
+  write_file_heartbeat fail 2 'log setup failed' "$duration_ms"
   if [ -x "$heartbeat_tool" ]; then
     if ! "$heartbeat_tool" self-growth-lint fail --reason 'log setup failed' --duration-ms "$duration_ms"; then
       echo "run-growth-lint.sh: warning: heartbeat update failed" >&2
     fi
   else
-    echo "run-growth-lint.sh: warning: heartbeat tool missing or not executable: $heartbeat_tool" >&2
+    echo "run-growth-lint.sh: warning: heartbeat tool missing or not executable: ${SGL_HEARTBEAT_TOOL:-}" >&2
   fi
   exit 2
 }
@@ -95,9 +121,9 @@ signal_name=''
 signal_number=0
 # shellcheck disable=SC2329 # Invoked indirectly by the signal traps below.
 forward_signal() {
+  [ -n "$child_pid" ] || return 0
   signal_name=$1
   signal_number=$2
-  [ -n "$child_pid" ] || return 0
   kill -"$signal_name" -- "-$child_pid" 2>/dev/null || kill -"$signal_name" "$child_pid" 2>/dev/null || :
   deadline=$(( $(date +%s) + 30 ))
   while kill -0 -- "-$child_pid" 2>/dev/null || kill -0 "$child_pid" 2>/dev/null; do
@@ -126,6 +152,8 @@ exec 3>&-
 if [ "$signal_number" -ne 0 ]; then
   lint_status=$((128 + signal_number))
 fi
+# The child is reaped; retain traps during cleanup without targeting a stale PID.
+child_pid=''
 
 end_seconds=$(date +%s)
 duration_ms=$(((end_seconds - start_seconds) * 1000))
@@ -135,24 +163,41 @@ if ! find "$log_dir" -maxdepth 1 -type f -name 'growth-lint-*.log' -mtime +30 -d
 fi
 
 log_basename=$(basename -- "$logfile")
+case "$lint_status" in
+  0|1) heartbeat_status=ok; reason='-' ;;
+  *)
+    heartbeat_status=fail
+    if [ -n "$signal_name" ]; then
+      reason="signal $signal_name (exit $lint_status); see $log_basename"
+    else
+      case "$lint_status" in
+        2) meaning=usage-or-precondition ;;
+        3) meaning=damaged ;;
+        4) meaning=sense-broken ;;
+        5) meaning=report-write-failed ;;
+        6) meaning=internal-error ;;
+        7) meaning=lock-conflict ;;
+        127) meaning=command-missing ;;
+        *) meaning=unknown; [ "$lint_status" -lt 128 ] || meaning=signal ;;
+      esac
+      reason="exit $lint_status ($meaning); see $log_basename"
+    fi
+    ;;
+esac
+write_file_heartbeat "$heartbeat_status" "$lint_status" "$reason" "$duration_ms"
 if [ -x "$heartbeat_tool" ]; then
-  if [ -n "$signal_name" ]; then
-    reason="signal $signal_name; see $log_basename"
-    if ! "$heartbeat_tool" self-growth-lint fail --reason "$reason" --duration-ms "$duration_ms"; then
-      echo "run-growth-lint.sh: warning: heartbeat update failed" >&2
-    fi
-  elif [ "$lint_status" -eq 0 ] || [ "$lint_status" -eq 1 ]; then
-    if ! "$heartbeat_tool" self-growth-lint ok --duration-ms "$duration_ms"; then
-      echo "run-growth-lint.sh: warning: heartbeat update failed" >&2
-    fi
+  if [ "$heartbeat_status" = ok ]; then
+    "$heartbeat_tool" self-growth-lint ok --duration-ms "$duration_ms"
+    hb_status=$?
   else
-    reason="exit $lint_status; see $log_basename"
-    if ! "$heartbeat_tool" self-growth-lint fail --reason "$reason" --duration-ms "$duration_ms"; then
-      echo "run-growth-lint.sh: warning: heartbeat update failed" >&2
-    fi
+    "$heartbeat_tool" self-growth-lint fail --reason "$reason" --duration-ms "$duration_ms"
+    hb_status=$?
+  fi
+  if [ "$hb_status" -ne 0 ]; then
+    echo "run-growth-lint.sh: warning: heartbeat update failed" >&2
   fi
 else
-  echo "run-growth-lint.sh: warning: heartbeat tool missing or not executable: $heartbeat_tool" >&2
+  echo "run-growth-lint.sh: warning: heartbeat tool missing or not executable: ${SGL_HEARTBEAT_TOOL:-}" >&2
 fi
 
 if [ "$lint_status" -eq 1 ]; then
